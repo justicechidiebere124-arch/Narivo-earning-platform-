@@ -1,0 +1,6 @@
+{
+  "name": "NARIVO - Nigerian Sponsored-Task Marketplace",
+  "description": "Nigeria's sponsored-task marketplace. Access genuine advertiser campaigns, submit task verification, earn approved rewards in Naira (₦), refer peers, and withdraw to Nigerian bank accounts.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
