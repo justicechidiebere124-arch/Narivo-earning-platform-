@@ -30,7 +30,7 @@ import { MembershipPage } from './components/pages/MembershipPage';
 const MainContent: React.FC = () => {
   const { currentScreen, isAuthenticated, toastMessage } = useApp();
 
-  const isPortalScreen = isAuthenticated && ['dashboard', 'wallet', 'referrals', 'profile', 'membership'].includes(currentScreen);
+  const isPortalScreen = isAuthenticated && ['dashboard', 'tasks', 'wallet', 'referrals', 'profile', 'membership'].includes(currentScreen);
 
   const renderScreen = () => {
     switch (currentScreen) {

@@ -101,12 +101,12 @@ export const LandingPage: React.FC = () => {
 
         {/* Official Main Heading */}
         <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black text-white tracking-tight leading-[1.14] font-heading max-w-4xl mx-auto">
-          Discover Sponsored Tasks and Digital Opportunities in Nigeria.
+          Discover Sponsored Tasks and Digital Opportunities.
         </h1>
 
         {/* Official Supporting Text */}
         <p className="text-sm sm:text-base text-slate-300 leading-relaxed max-w-2xl mx-auto">
-          NARIVO connects Nigerian members with sponsored campaigns from advertisers. Explore available opportunities, follow task instructions, submit genuine proof and track approved rewards through your member account.
+          Explore advertiser-funded campaigns, complete genuine tasks and track approved rewards through your NARIVO account.
         </p>
 
         {/* Primary Call-to-Action Buttons */}
@@ -140,7 +140,7 @@ export const LandingPage: React.FC = () => {
                 onClick={() => setCurrentScreen('how-it-works')}
                 className="w-full sm:w-auto min-h-[48px] px-7 py-3 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] text-slate-200 hover:text-white font-bold text-sm border border-white/[0.1] flex items-center justify-center gap-2 transition-all cursor-pointer"
               >
-                <span>How It Works</span>
+                <span>Explore NARIVO</span>
               </button>
             </>
           )}

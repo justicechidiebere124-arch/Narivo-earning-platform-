@@ -5,21 +5,20 @@
 
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
+import { usePageSeo } from '../../hooks/usePageSeo';
+import { Card, Badge, Button } from '../ui';
 import { 
   ShieldCheck, 
   Crown, 
   CheckCircle2, 
   Lock, 
-  AlertCircle, 
   RotateCw, 
   Clock, 
-  CreditCard, 
-  Sparkles, 
-  Database,
   Wallet,
-  AlertTriangle
+  AlertTriangle,
+  ArrowRight,
+  Shield
 } from 'lucide-react';
-import { formatNaira } from '../../utils/formatters';
 
 export const MembershipPage: React.FC = () => {
   const { 
@@ -27,7 +26,6 @@ export const MembershipPage: React.FC = () => {
     activeMembership, 
     isMembershipActive,
     isMembershipExpired,
-    membershipPlans, 
     membershipLoading, 
     refreshMembership, 
     setCurrentScreen, 
@@ -35,6 +33,12 @@ export const MembershipPage: React.FC = () => {
   } = useApp();
 
   const [refreshing, setRefreshing] = useState(false);
+
+  usePageSeo({
+    title: 'Membership Status – NARIVO',
+    description: 'Review your NARIVO subscription tier, status evaluated directly from public.memberships and financial rights guarantee.',
+    canonicalPath: '/membership',
+  });
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -66,52 +70,47 @@ export const MembershipPage: React.FC = () => {
           </p>
         </div>
 
-        <button
+        <Button
           onClick={handleRefresh}
-          disabled={refreshing || membershipLoading}
-          className="self-start sm:self-auto flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] text-slate-300 hover:text-white border border-white/[0.08] text-xs font-semibold transition-all cursor-pointer disabled:opacity-50"
-          title="Refresh database records"
+          variant="outline"
+          size="sm"
+          isLoading={refreshing || membershipLoading}
+          leftIcon={<RotateCw className="w-3.5 h-3.5" />}
+          className="self-start sm:self-auto"
         >
-          <RotateCw className={`w-3.5 h-3.5 ${refreshing || membershipLoading ? 'animate-spin text-emerald-400' : ''}`} />
-          <span>Refresh</span>
-        </button>
+          Refresh Status
+        </Button>
       </div>
 
       {/* 2. Current User Membership Card */}
-      <div className={`rounded-3xl p-6 sm:p-7 border transition-all ${
-        isMembershipActive 
-          ? 'bg-gradient-to-br from-[#063b2a] via-[#04241a] to-[#02130e] border-emerald-500/40 shadow-lg' 
-          : isMembershipExpired
-            ? 'glass-panel border-amber-500/30 bg-amber-500/5'
-            : 'glass-panel border-white/[0.08]'
-      }`}>
+      <Card 
+        variant={isMembershipActive ? 'balance' : 'default'}
+        className="p-6 sm:p-7"
+      >
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-2">
             <div className="flex items-center gap-2">
-              <span className={`text-[10px] font-bold px-2 py-0.5 rounded border uppercase flex items-center gap-1 ${
-                isMembershipActive 
-                  ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' 
-                  : isMembershipExpired
-                    ? 'bg-amber-500/20 text-amber-300 border-amber-500/30'
-                    : 'bg-white/[0.05] text-slate-400 border-white/[0.1]'
-              }`}>
+              <Badge 
+                variant={isMembershipActive ? 'emerald' : isMembershipExpired ? 'warning' : 'neutral'}
+                size="sm"
+              >
                 {isMembershipActive ? (
                   <>
-                    <Crown className="w-3 h-3 text-emerald-400" />
+                    <Crown className="w-3 h-3" />
                     <span>Active Premium</span>
                   </>
                 ) : isMembershipExpired ? (
                   <>
-                    <AlertTriangle className="w-3 h-3 text-amber-400" />
+                    <AlertTriangle className="w-3 h-3" />
                     <span>Subscription Expired</span>
                   </>
                 ) : (
                   <>
-                    <ShieldCheck className="w-3 h-3 text-emerald-400" />
+                    <ShieldCheck className="w-3 h-3" />
                     <span>Registered Profile</span>
                   </>
                 )}
-              </span>
+              </Badge>
             </div>
 
             <h2 className="text-xl sm:text-2xl font-black text-white font-heading">
@@ -143,37 +142,40 @@ export const MembershipPage: React.FC = () => {
           </div>
 
           <div className="flex flex-col sm:flex-row md:flex-col gap-2 shrink-0">
-            <button
+            <Button
               onClick={() => setCurrentScreen('wallet')}
-              className="px-4 py-2.5 rounded-xl bg-white/[0.08] hover:bg-white/[0.15] text-white text-xs font-bold border border-white/[0.1] transition-all flex items-center justify-center gap-2 cursor-pointer"
+              variant="primary"
+              size="sm"
+              leftIcon={<Wallet className="w-3.5 h-3.5" />}
             >
-              <Wallet className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Access Wallet</span>
-            </button>
-            <button
+              Access Wallet
+            </Button>
+            <Button
               onClick={() => setCurrentScreen('tasks')}
-              className="px-4 py-2.5 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] text-slate-300 text-xs font-semibold transition-all flex items-center justify-center gap-2 cursor-pointer"
+              variant="outline"
+              size="sm"
+              rightIcon={<ArrowRight className="w-3.5 h-3.5" />}
             >
-              <span>Browse Tasks</span>
-            </button>
+              Browse Tasks
+            </Button>
           </div>
         </div>
-      </div>
+      </Card>
 
-      {/* 3. Premium Plan Card (Strictly Reflecting Inactive / Unpriced Status) */}
+      {/* 3. Platform Membership Tiers */}
       <div className="space-y-4">
         <div>
           <h2 className="text-base font-bold text-white font-heading">
             Platform Membership Tiers
           </h2>
           <p className="text-xs text-slate-400">
-            Official configuration from <code className="text-emerald-300 font-mono text-[11px]">public.membership_plans</code>.
+            Official tier configuration from <code className="text-emerald-300 font-mono text-[11px]">public.membership_plans</code>.
           </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Card: Premium Plan (Inactive & Unpriced) */}
-          <div className="glass-panel rounded-3xl p-6 sm:p-7 border border-white/[0.08] space-y-5 flex flex-col justify-between relative overflow-hidden">
+          <Card variant="elevated" className="p-6 sm:p-7 space-y-5 flex flex-col justify-between">
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -188,9 +190,9 @@ export const MembershipPage: React.FC = () => {
                   </div>
                 </div>
 
-                <span className="text-[9px] font-bold px-2 py-0.5 rounded uppercase bg-amber-500/15 text-amber-300 border border-amber-500/25">
+                <Badge variant="warning" size="sm">
                   Plan Inactive
-                </span>
+                </Badge>
               </div>
 
               <p className="text-xs text-slate-300 leading-relaxed">
@@ -198,8 +200,8 @@ export const MembershipPage: React.FC = () => {
               </p>
 
               {/* Price Row: Unconfigured Notice */}
-              <div className="p-3.5 rounded-2xl bg-black/40 border border-white/[0.06] space-y-1">
-                <span className="text-[10px] text-slate-400 block uppercase">Subscription Fee</span>
+              <div className="p-3.5 rounded-xl bg-black/40 border border-white/[0.06] space-y-1">
+                <span className="text-[10px] text-slate-400 block uppercase font-mono">Subscription Fee</span>
                 <div className="text-xl font-black font-mono text-white flex items-center gap-2">
                   <span>Price Unconfigured</span>
                 </div>
@@ -226,21 +228,23 @@ export const MembershipPage: React.FC = () => {
             </div>
 
             <div className="pt-2">
-              <button
+              <Button
                 disabled
-                className="w-full h-11 rounded-xl bg-white/[0.05] text-slate-500 font-bold text-xs border border-white/[0.06] flex items-center justify-center gap-2 cursor-not-allowed"
+                variant="outline"
+                size="md"
+                className="w-full opacity-60 cursor-not-allowed"
+                leftIcon={<Lock className="w-3.5 h-3.5" />}
               >
-                <Lock className="w-3.5 h-3.5" />
-                <span>Registration Currently Unavailable</span>
-              </button>
+                Registration Currently Unavailable
+              </Button>
             </div>
-          </div>
+          </Card>
 
           {/* Right Card: Financial Rights Preservation Guarantee */}
-          <div className="glass-panel rounded-3xl p-6 sm:p-7 border border-white/[0.08] space-y-4 flex flex-col justify-between">
+          <Card variant="elevated" className="p-6 sm:p-7 space-y-4 flex flex-col justify-between">
             <div className="space-y-3">
               <div className="flex items-center gap-2 text-xs font-bold text-white font-heading">
-                <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                <Shield className="w-4 h-4 text-emerald-400" />
                 <span>Financial Balance Rights Guarantee</span>
               </div>
 
@@ -265,14 +269,16 @@ export const MembershipPage: React.FC = () => {
               </div>
             </div>
 
-            <button
+            <Button
               onClick={() => setCurrentScreen('wallet')}
-              className="w-full h-11 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] text-slate-200 hover:text-white font-bold text-xs border border-white/[0.08] transition-all flex items-center justify-center gap-2 cursor-pointer"
+              variant="secondary"
+              size="md"
+              className="w-full"
+              leftIcon={<Wallet className="w-3.5 h-3.5 text-emerald-400" />}
             >
-              <Wallet className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Go to Member Wallet</span>
-            </button>
-          </div>
+              Go to Member Wallet
+            </Button>
+          </Card>
         </div>
       </div>
     </div>

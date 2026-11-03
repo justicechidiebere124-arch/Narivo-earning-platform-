@@ -5,6 +5,8 @@
 
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
+import { usePageSeo } from '../../hooks/usePageSeo';
+import { Card, Input, Button, Badge } from '../ui';
 import { 
   ShieldCheck, 
   ArrowRight, 
@@ -16,9 +18,6 @@ import {
   AlertCircle, 
   ArrowLeft,
   CheckCircle2,
-  Eye,
-  EyeOff,
-  RefreshCw,
   Inbox
 } from 'lucide-react';
 
@@ -31,13 +30,18 @@ export const RegisterPage: React.FC = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [referralCode, setReferralCode] = useState('');
   const [agreedToTerms, setAgreedToTerms] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Verification success screen state
   const [registrationSuccessEmail, setRegistrationSuccessEmail] = useState<string | null>(null);
   const [isResending, setIsResending] = useState(false);
+
+  usePageSeo({
+    title: 'Create Free Account – NARIVO',
+    description: 'Register a free NARIVO member account to access advertiser-funded campaigns and digital reward opportunities in Nigeria.',
+    canonicalPath: '/register',
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -118,7 +122,7 @@ export const RegisterPage: React.FC = () => {
   if (registrationSuccessEmail) {
     return (
       <div className="max-w-md mx-auto px-4 py-12 sm:py-20 space-y-6">
-        <div className="glass-panel rounded-3xl p-6 sm:p-8 border border-white/[0.08] shadow-2xl text-center space-y-5">
+        <Card variant="elevated" className="p-6 sm:p-8 text-center space-y-5">
           <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto shadow-sm">
             <Inbox className="w-7 h-7" />
           </div>
@@ -132,7 +136,7 @@ export const RegisterPage: React.FC = () => {
             </p>
           </div>
 
-          <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/[0.06] text-xs text-slate-400 text-left space-y-2">
+          <div className="p-4 rounded-xl bg-white/[0.03] border border-white/[0.06] text-xs text-slate-400 text-left space-y-2">
             <div className="flex items-center gap-2 text-white font-semibold">
               <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
               <span>Next Steps:</span>
@@ -144,13 +148,15 @@ export const RegisterPage: React.FC = () => {
           </div>
 
           <div className="space-y-2 pt-2">
-            <button
+            <Button
               onClick={() => setCurrentScreen('login')}
-              className="w-full h-11 rounded-xl btn-emerald-primary text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 cursor-pointer shadow-md"
+              variant="primary"
+              size="lg"
+              className="w-full"
+              rightIcon={<ArrowRight className="w-4 h-4" />}
             >
-              <span>Proceed to Sign In</span>
-              <ArrowRight className="w-4 h-4" />
-            </button>
+              Proceed to Sign In
+            </Button>
 
             <button
               onClick={handleResend}
@@ -160,7 +166,7 @@ export const RegisterPage: React.FC = () => {
               {isResending ? 'Sending...' : "Didn't receive email? Resend link"}
             </button>
           </div>
-        </div>
+        </Card>
       </div>
     );
   }
@@ -179,153 +185,109 @@ export const RegisterPage: React.FC = () => {
       </div>
 
       {/* Main Registration Card */}
-      <div className="glass-panel rounded-3xl p-6 sm:p-8 border border-white/[0.08] shadow-[0_20px_50px_rgba(0,0,0,0.7)] space-y-6">
-        <div className="space-y-1.5 text-center sm:text-left">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-800 text-white font-black text-lg flex items-center justify-center mx-auto sm:mx-0 shadow-md">
-            N
+      <Card variant="elevated" className="p-6 sm:p-8 space-y-6">
+        <div className="space-y-2 text-center sm:text-left">
+          <div className="flex items-center justify-between">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-800 text-white font-black text-lg flex items-center justify-center shadow-md">
+              N
+            </div>
+            <Badge variant="emerald" size="sm">
+              <ShieldCheck className="w-3 h-3" />
+              <span>Free Onboarding</span>
+            </Badge>
           </div>
-          <h1 className="text-xl sm:text-2xl font-bold text-white font-heading pt-2">
+          <h1 className="text-xl sm:text-2xl font-bold text-white font-heading pt-1">
             Create Free Account
           </h1>
           <p className="text-xs text-slate-400">
-            Registration creates your member profile without upfront fees.
+            Registration creates your member profile without mandatory upfront fees.
           </p>
         </div>
 
         {error && (
-          <div className="p-3.5 bg-rose-500/10 rounded-2xl border border-rose-500/30 text-xs text-rose-300 flex items-start gap-2.5">
+          <div className="p-3.5 bg-rose-500/10 rounded-xl border border-rose-500/30 text-xs text-rose-300 flex items-start gap-2.5">
             <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
             <span className="leading-relaxed">{error}</span>
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-3.5">
-          {/* Full Name */}
-          <div className="space-y-1">
-            <label className="text-xs font-semibold text-slate-300 block">
-              Full Legal Name
-            </label>
-            <div className="relative">
-              <input
-                type="text"
-                required
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                placeholder="Justice Chidiebere"
-                className="w-full h-11 pl-10 pr-4 rounded-xl bg-black/40 border border-white/[0.08] focus:border-emerald-500 text-white text-xs outline-none transition-colors"
-              />
-              <User className="w-4 h-4 text-slate-500 absolute left-3.5 top-3.5" />
-            </div>
-            <span className="text-[10px] text-slate-500 block">
-              Must match your Nigerian commercial bank account name.
-            </span>
-          </div>
+          <Input
+            label="Full Legal Name"
+            type="text"
+            required
+            value={fullName}
+            onChange={(e) => setFullName(e.target.value)}
+            placeholder="Justice Chidiebere"
+            leftIcon={<User className="w-4 h-4 text-slate-500" />}
+            helperText="Must match your Nigerian commercial bank account name."
+            autoComplete="name"
+          />
 
-          {/* Email */}
-          <div className="space-y-1">
-            <label className="text-xs font-semibold text-slate-300 block">
-              Email Address
-            </label>
-            <div className="relative">
-              <input
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="name@domain.com"
-                className="w-full h-11 pl-10 pr-4 rounded-xl bg-black/40 border border-white/[0.08] focus:border-emerald-500 text-white text-xs outline-none transition-colors"
-              />
-              <Mail className="w-4 h-4 text-slate-500 absolute left-3.5 top-3.5" />
-            </div>
-          </div>
+          <Input
+            label="Email Address"
+            type="email"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="name@domain.com"
+            leftIcon={<Mail className="w-4 h-4 text-slate-500" />}
+            autoComplete="email"
+          />
 
-          {/* Phone */}
-          <div className="space-y-1">
-            <label className="text-xs font-semibold text-slate-300 block">
-              Mobile Phone Number
-            </label>
-            <div className="relative">
-              <input
-                type="tel"
-                required
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="0801 234 5678"
-                className="w-full h-11 pl-10 pr-4 rounded-xl bg-black/40 border border-white/[0.08] focus:border-emerald-500 text-white text-xs outline-none transition-colors"
-              />
-              <Phone className="w-4 h-4 text-slate-500 absolute left-3.5 top-3.5" />
-            </div>
-          </div>
+          <Input
+            label="Mobile Phone Number"
+            type="tel"
+            required
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            placeholder="0801 234 5678"
+            leftIcon={<Phone className="w-4 h-4 text-slate-500" />}
+            autoComplete="tel"
+          />
 
-          {/* Password & Confirm */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-slate-300 block">
-                Password
-              </label>
-              <div className="relative">
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Min. 6 chars"
-                  className="w-full h-11 pl-9 pr-3 rounded-xl bg-black/40 border border-white/[0.08] focus:border-emerald-500 text-white text-xs outline-none transition-colors"
-                />
-                <Lock className="w-4 h-4 text-slate-500 absolute left-3 top-3.5" />
-              </div>
-            </div>
+            <Input
+              label="Password"
+              type="password"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Min. 6 chars"
+              leftIcon={<Lock className="w-4 h-4 text-slate-500" />}
+              autoComplete="new-password"
+            />
 
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-slate-300 block">
-                Confirm Password
-              </label>
-              <div className="relative">
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  required
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Repeat password"
-                  className="w-full h-11 pl-9 pr-8 rounded-xl bg-black/40 border border-white/[0.08] focus:border-emerald-500 text-white text-xs outline-none transition-colors"
-                />
-                <Lock className="w-4 h-4 text-slate-500 absolute left-3 top-3.5" />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-2.5 top-3.5 text-slate-500 hover:text-slate-300 transition-colors cursor-pointer"
-                >
-                  {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                </button>
-              </div>
-            </div>
+            <Input
+              label="Confirm Password"
+              type="password"
+              required
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              placeholder="Repeat password"
+              leftIcon={<Lock className="w-4 h-4 text-slate-500" />}
+              autoComplete="new-password"
+            />
           </div>
 
-          {/* Referral Code (Optional) */}
-          <div className="space-y-1">
-            <label className="text-xs font-semibold text-slate-300 block">
-              Referral Code <span className="text-slate-500 font-normal">(Optional)</span>
-            </label>
-            <div className="relative">
-              <input
-                type="text"
-                value={referralCode}
-                onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
-                placeholder="e.g. NAR-8429"
-                className="w-full h-11 pl-10 pr-4 rounded-xl bg-black/40 border border-white/[0.08] focus:border-emerald-500 text-white text-xs outline-none transition-colors uppercase"
-              />
-              <Tag className="w-4 h-4 text-slate-500 absolute left-3.5 top-3.5" />
-            </div>
-          </div>
+          <Input
+            label="Referral Code (Optional)"
+            type="text"
+            value={referralCode}
+            onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
+            placeholder="e.g. NAR-8429"
+            leftIcon={<Tag className="w-4 h-4 text-slate-500" />}
+            className="uppercase font-mono"
+          />
 
-          {/* Terms & Anti-Fraud Agreement */}
+          {/* Terms Agreement */}
           <div className="pt-1">
             <label className="flex items-start gap-2.5 cursor-pointer text-xs text-slate-400 select-none">
               <input
                 type="checkbox"
                 checked={agreedToTerms}
                 onChange={(e) => setAgreedToTerms(e.target.checked)}
-                className="mt-0.5 w-4 h-4 rounded border-white/20 bg-black/40 text-emerald-500 focus:ring-0 focus:ring-offset-0 cursor-pointer accent-emerald-500"
+                className="mt-0.5 w-4 h-4 rounded border-white/20 bg-black/40 text-emerald-500 focus:ring-0 focus:ring-offset-0 cursor-pointer accent-emerald-500 shrink-0"
               />
               <span className="leading-relaxed">
                 I agree to the NARIVO Terms of Service, anti-fraud audit policies, and verify that all information provided is accurate.
@@ -333,24 +295,16 @@ export const RegisterPage: React.FC = () => {
             </label>
           </div>
 
-          {/* Submit Button */}
-          <button
+          <Button
             type="submit"
-            disabled={isSubmitting}
-            className="w-full h-12 rounded-xl btn-emerald-primary text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 cursor-pointer transition-all shadow-md active:scale-98 disabled:opacity-50 mt-2"
+            variant="primary"
+            size="lg"
+            isLoading={isSubmitting}
+            className="w-full mt-2"
+            rightIcon={<ArrowRight className="w-4 h-4" />}
           >
-            {isSubmitting ? (
-              <>
-                <RefreshCw className="w-4 h-4 animate-spin" />
-                <span>Registering Profile...</span>
-              </>
-            ) : (
-              <>
-                <span>Create Free Account</span>
-                <ArrowRight className="w-4 h-4" />
-              </>
-            )}
-          </button>
+            {isSubmitting ? 'Registering Profile...' : 'Create Free Account'}
+          </Button>
         </form>
 
         <div className="pt-2 text-center text-xs text-slate-400 border-t border-white/[0.06]">
@@ -362,7 +316,7 @@ export const RegisterPage: React.FC = () => {
             Sign in here
           </button>
         </div>
-      </div>
+      </Card>
     </div>
   );
 };

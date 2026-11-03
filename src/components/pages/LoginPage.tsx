@@ -5,23 +5,23 @@
 
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
+import { usePageSeo } from '../../hooks/usePageSeo';
+import { Card, Input, Button, Modal, Badge } from '../ui';
 import { 
   Lock, 
   Mail, 
   ArrowRight, 
   AlertCircle, 
   ArrowLeft, 
-  Eye, 
-  EyeOff, 
   CheckCircle2,
-  RefreshCw
+  ShieldCheck,
+  Send
 } from 'lucide-react';
 
 export const LoginPage: React.FC = () => {
   const { login, setCurrentScreen, showToast, resetPassword, resendVerificationEmail } = useApp();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -34,6 +34,12 @@ export const LoginPage: React.FC = () => {
   // Email verification resend state
   const [showResendPrompt, setShowResendPrompt] = useState(false);
   const [isResending, setIsResending] = useState(false);
+
+  usePageSeo({
+    title: 'Sign In – NARIVO',
+    description: 'Sign in to access your NARIVO verified member dashboard, sponsored tasks and digital wallet.',
+    canonicalPath: '/login',
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -125,24 +131,30 @@ export const LoginPage: React.FC = () => {
       </div>
 
       {/* Main Login Card */}
-      <div className="glass-panel rounded-3xl p-6 sm:p-8 border border-white/[0.08] shadow-[0_20px_50px_rgba(0,0,0,0.7)] space-y-6">
-        <div className="space-y-1.5 text-center sm:text-left">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-800 text-white font-black text-lg flex items-center justify-center mx-auto sm:mx-0 shadow-md">
-            N
+      <Card variant="elevated" className="p-6 sm:p-8 space-y-6">
+        <div className="space-y-2 text-center sm:text-left">
+          <div className="flex items-center justify-between">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-800 text-white font-black text-lg flex items-center justify-center shadow-md">
+              N
+            </div>
+            <Badge variant="emerald" size="sm">
+              <ShieldCheck className="w-3 h-3" />
+              <span>Secure Session</span>
+            </Badge>
           </div>
-          <h1 className="text-xl sm:text-2xl font-bold text-white font-heading pt-2">
+          <h1 className="text-xl sm:text-2xl font-bold text-white font-heading pt-1">
             Sign In to NARIVO
           </h1>
           <p className="text-xs text-slate-400">
-            Access your verified member terminal and wallet.
+            Access your member dashboard, task opportunities, and Naira wallet.
           </p>
         </div>
 
         {error && (
-          <div className="p-3.5 bg-rose-500/10 rounded-2xl border border-rose-500/30 text-xs text-rose-300 space-y-2">
-            <div className="flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
-              <span>{error}</span>
+          <div className="p-3.5 bg-rose-500/10 rounded-xl border border-rose-500/30 text-xs text-rose-300 space-y-2">
+            <div className="flex items-start gap-2">
+              <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+              <span className="leading-relaxed">{error}</span>
             </div>
             {showResendPrompt && (
               <div className="pt-2 border-t border-rose-500/20 flex items-center justify-between text-[11px]">
@@ -161,26 +173,18 @@ export const LoginPage: React.FC = () => {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Email */}
-          <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-slate-300 block">
-              Email Address
-            </label>
-            <div className="relative">
-              <input
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="name@domain.com"
-                className="w-full h-11 pl-10 pr-4 rounded-xl bg-black/40 border border-white/[0.08] focus:border-emerald-500 text-white text-xs outline-none transition-colors"
-              />
-              <Mail className="w-4 h-4 text-slate-500 absolute left-3.5 top-3.5" />
-            </div>
-          </div>
+          <Input
+            label="Email Address"
+            type="email"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="name@domain.com"
+            leftIcon={<Mail className="w-4 h-4 text-slate-500" />}
+            autoComplete="email"
+          />
 
-          {/* Password */}
-          <div className="space-y-1.5">
+          <div className="space-y-1">
             <div className="flex items-center justify-between">
               <label className="text-xs font-semibold text-slate-300">
                 Password
@@ -197,44 +201,27 @@ export const LoginPage: React.FC = () => {
                 Forgot password?
               </button>
             </div>
-            <div className="relative">
-              <input
-                type={showPassword ? 'text' : 'password'}
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••••••"
-                className="w-full h-11 pl-10 pr-10 rounded-xl bg-black/40 border border-white/[0.08] focus:border-emerald-500 text-white text-xs outline-none transition-colors"
-              />
-              <Lock className="w-4 h-4 text-slate-500 absolute left-3.5 top-3.5" />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3.5 top-3.5 text-slate-500 hover:text-slate-300 transition-colors cursor-pointer"
-              >
-                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
-            </div>
+            <Input
+              type="password"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••••••"
+              leftIcon={<Lock className="w-4 h-4 text-slate-500" />}
+              autoComplete="current-password"
+            />
           </div>
 
-          {/* Submit Button */}
-          <button
+          <Button
             type="submit"
-            disabled={isSubmitting}
-            className="w-full h-12 rounded-xl btn-emerald-primary text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 cursor-pointer transition-all shadow-md active:scale-98 disabled:opacity-50 mt-2"
+            variant="primary"
+            size="lg"
+            isLoading={isSubmitting}
+            className="w-full"
+            rightIcon={<ArrowRight className="w-4 h-4" />}
           >
-            {isSubmitting ? (
-              <>
-                <RefreshCw className="w-4 h-4 animate-spin" />
-                <span>Authenticating with Supabase...</span>
-              </>
-            ) : (
-              <>
-                <span>Sign In</span>
-                <ArrowRight className="w-4 h-4" />
-              </>
-            )}
-          </button>
+            {isSubmitting ? 'Authenticating...' : 'Sign In'}
+          </Button>
         </form>
 
         <div className="pt-2 text-center text-xs text-slate-400 border-t border-white/[0.06]">
@@ -246,59 +233,68 @@ export const LoginPage: React.FC = () => {
             Create free account
           </button>
         </div>
-      </div>
+      </Card>
 
       {/* Real Password Reset Modal */}
-      {showResetModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-150">
-          <div className="glass-panel rounded-3xl max-w-sm w-full p-6 border border-white/[0.12] space-y-4 shadow-2xl">
-            <h3 className="text-base font-bold text-white font-heading">
-              Reset Your Password
-            </h3>
-            <p className="text-xs text-slate-400 leading-relaxed">
-              Enter your registered email address and we'll send a secure password reset link via Supabase Auth.
-            </p>
+      <Modal
+        isOpen={showResetModal}
+        onClose={() => setShowResetModal(false)}
+        title="Reset Your Password"
+        description="Enter your registered email address and we will send a secure password reset link."
+        size="sm"
+      >
+        <div className="space-y-4">
+          {resetStatus && (
+            <div className={`p-3 rounded-xl text-xs flex items-start gap-2 ${
+              resetStatus.success 
+                ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-300' 
+                : 'bg-rose-500/10 border border-rose-500/30 text-rose-300'
+            }`}>
+              {resetStatus.success ? (
+                <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5 text-emerald-400" />
+              ) : (
+                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-400" />
+              )}
+              <span className="leading-relaxed">{resetStatus.message}</span>
+            </div>
+          )}
 
-            {resetStatus && (
-              <div className={`p-3 rounded-xl text-xs flex items-start gap-2 ${
-                resetStatus.success 
-                  ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-300' 
-                  : 'bg-rose-500/10 border border-rose-500/30 text-rose-300'
-              }`}>
-                {resetStatus.success ? <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5 text-emerald-400" /> : <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-400" />}
-                <span>{resetStatus.message}</span>
-              </div>
-            )}
+          <form onSubmit={handlePasswordResetSubmit} className="space-y-4">
+            <Input
+              label="Registered Email"
+              type="email"
+              required
+              value={resetEmail}
+              onChange={(e) => setResetEmail(e.target.value)}
+              placeholder="registered@email.com"
+              leftIcon={<Mail className="w-4 h-4 text-slate-500" />}
+              autoFocus
+            />
 
-            <form onSubmit={handlePasswordResetSubmit} className="space-y-3">
-              <input
-                type="email"
-                required
-                value={resetEmail}
-                onChange={(e) => setResetEmail(e.target.value)}
-                placeholder="registered@email.com"
-                className="w-full h-11 px-3.5 rounded-xl bg-black/40 border border-white/[0.08] focus:border-emerald-500 text-white text-xs outline-none"
-              />
-              <div className="flex items-center gap-2 pt-1">
-                <button
-                  type="button"
-                  onClick={() => setShowResetModal(false)}
-                  className="flex-1 py-2.5 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] text-slate-300 text-xs font-semibold transition-all cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={resetSubmitting}
-                  className="flex-1 py-2.5 rounded-xl btn-emerald-primary text-white text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
-                >
-                  {resetSubmitting ? 'Sending...' : 'Send Link'}
-                </button>
-              </div>
-            </form>
-          </div>
+            <div className="flex items-center gap-3 pt-1">
+              <Button
+                type="button"
+                variant="outline"
+                size="md"
+                onClick={() => setShowResetModal(false)}
+                className="flex-1"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                variant="primary"
+                size="md"
+                isLoading={resetSubmitting}
+                className="flex-1"
+                rightIcon={<Send className="w-3.5 h-3.5" />}
+              >
+                {resetSubmitting ? 'Sending...' : 'Send Link'}
+              </Button>
+            </div>
+          </form>
         </div>
-      )}
+      </Modal>
     </div>
   );
 };

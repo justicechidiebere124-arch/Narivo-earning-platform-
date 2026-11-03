@@ -5,7 +5,15 @@
 
 import React from 'react';
 import { useApp } from '../../context/AppContext';
-import { LayoutDashboard, CheckSquare, Wallet, Users, User, Home, LogIn, UserPlus } from 'lucide-react';
+import { 
+  Home, 
+  CheckSquare, 
+  Wallet, 
+  Users, 
+  User, 
+  LogIn, 
+  UserPlus 
+} from 'lucide-react';
 
 export const MobileNav: React.FC = () => {
   const { currentScreen, setCurrentScreen, isAuthenticated } = useApp();
@@ -30,12 +38,9 @@ export const MobileNav: React.FC = () => {
   return (
     <nav 
       aria-label="Mobile Navigation" 
-      className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#070b0f]/92 backdrop-blur-3xl border-t border-white/[0.12] shadow-[0_-10px_35px_rgba(0,0,0,0.85)] pb-safe relative"
+      className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#070b10]/95 backdrop-blur-2xl border-t border-white/[0.08] shadow-[0_-8px_30px_rgba(0,0,0,0.8)] pb-safe"
     >
-      {/* Specular top border highlight sheen */}
-      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-emerald-400/40 to-transparent pointer-events-none" />
-
-      <div className={`grid ${isAuthenticated ? 'grid-cols-5' : 'grid-cols-4'} items-center h-16 max-w-md mx-auto px-2`}>
+      <div className={`grid ${isAuthenticated ? 'grid-cols-5' : 'grid-cols-4'} items-center h-16 max-w-md mx-auto px-1`}>
         {currentTabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = currentScreen === tab.id;
@@ -46,27 +51,23 @@ export const MobileNav: React.FC = () => {
                 setCurrentScreen(tab.id);
                 window.scrollTo({ top: 0, behavior: 'smooth' });
               }}
-              className={`min-h-[48px] min-w-[44px] flex flex-col items-center justify-center transition-all duration-150 active:scale-95 cursor-pointer relative py-1 rounded-2xl ${
+              className={`min-h-[48px] min-w-[44px] flex flex-col items-center justify-center transition-all duration-150 cursor-pointer relative py-1 rounded-xl ${
                 isActive 
-                  ? 'text-emerald-300' 
+                  ? 'text-emerald-400' 
                   : 'text-slate-400 hover:text-slate-200'
               }`}
             >
-              <div className={`relative px-2.5 py-1 rounded-xl transition-all ${
+              <div className={`p-1 rounded-lg transition-all ${
                 isActive 
-                  ? 'bg-emerald-500/15 border border-emerald-500/30 shadow-[0_0_12px_rgba(16,185,129,0.25)]' 
-                  : ''
+                  ? 'bg-emerald-500/10 text-emerald-400' 
+                  : 'text-slate-400'
               }`}>
                 <Icon className={`w-5 h-5 transition-transform ${
-                  isActive 
-                    ? 'stroke-[2.5] scale-105 text-emerald-300 drop-shadow-[0_0_8px_rgba(16,185,129,0.7)]' 
-                    : 'stroke-[1.7]'
+                  isActive ? 'stroke-[2.2] scale-105' : 'stroke-[1.75]'
                 }`} />
               </div>
-              <span className={`text-[10px] tracking-tight mt-0.5 whitespace-nowrap transition-colors ${
-                isActive 
-                  ? 'font-bold text-emerald-300' 
-                  : 'font-medium text-slate-400'
+              <span className={`text-[10px] tracking-tight mt-0.5 whitespace-nowrap ${
+                isActive ? 'font-bold text-emerald-400' : 'font-medium text-slate-400'
               }`}>
                 {tab.label}
               </span>

@@ -7,23 +7,21 @@ import React from 'react';
 import { useApp, ScreenType } from '../../context/AppContext';
 import { formatNaira } from '../../utils/formatters';
 import { 
-  LayoutDashboard, 
+  Home, 
   CheckSquare, 
   Wallet, 
   Users, 
   User, 
-  Terminal, 
+  Crown,
   LogOut, 
-  ArrowUpRight,
-  ShieldCheck,
-  Crown
+  Terminal,
+  ArrowUpRight
 } from 'lucide-react';
 
 export const Sidebar: React.FC = () => {
   const { 
     currentScreen, 
     setCurrentScreen, 
-    user, 
     availableBalance, 
     isMembershipActive,
     logout, 
@@ -31,33 +29,30 @@ export const Sidebar: React.FC = () => {
   } = useApp();
 
   const navItems: { id: ScreenType; label: string; icon: React.FC<{ className?: string }> }[] = [
-    { id: 'dashboard', label: 'Command Center', icon: LayoutDashboard },
-    { id: 'tasks', label: 'Sponsored Tasks', icon: CheckSquare },
-    { id: 'wallet', label: 'Wallet & Payouts', icon: Wallet },
-    { id: 'membership', label: 'Membership Tiers', icon: Crown },
-    { id: 'referrals', label: 'Referral Network', icon: Users },
-    { id: 'profile', label: 'Profile & Bank', icon: User },
+    { id: 'dashboard', label: 'Home', icon: Home },
+    { id: 'tasks', label: 'Tasks', icon: CheckSquare },
+    { id: 'wallet', label: 'Wallet', icon: Wallet },
+    { id: 'referrals', label: 'Referrals', icon: Users },
+    { id: 'membership', label: 'Membership', icon: Crown },
+    { id: 'profile', label: 'Profile', icon: User },
   ];
 
   return (
-    <aside className="hidden lg:flex w-72 flex-col shrink-0 min-h-screen border-r border-white/[0.07] bg-[#070b0f]/90 backdrop-blur-2xl sticky top-0 z-30">
+    <aside className="hidden lg:flex w-64 flex-col shrink-0 min-h-screen border-r border-white/[0.07] bg-[#070b10] sticky top-0 z-30">
       {/* Brand Header */}
-      <div className="h-20 px-6 flex items-center justify-between border-b border-white/[0.06]">
+      <div className="h-18 px-6 flex items-center justify-between border-b border-white/[0.06]">
         <button
           onClick={() => setCurrentScreen('dashboard')}
-          className="flex items-center gap-3 text-left group cursor-pointer"
+          className="flex items-center gap-3 text-left cursor-pointer group"
         >
-          <div className="relative">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-800 flex items-center justify-center text-white font-extrabold text-xl shadow-[0_0_20px_rgba(16,185,129,0.35)] group-hover:shadow-[0_0_28px_rgba(16,185,129,0.55)] transition-all">
-              N
-            </div>
-            <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-400 ring-2 ring-[#070b0f]" />
+          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center text-slate-950 font-black text-base shadow-[0_2px_12px_rgba(16,185,129,0.3)]">
+            N
           </div>
           <div>
-            <span className="text-xl font-black tracking-tight text-white font-heading block">
+            <span className="text-lg font-black tracking-tight text-white font-heading block leading-none">
               NARIVO
             </span>
-            <span className="text-[10px] text-emerald-400 font-medium tracking-widest uppercase block -mt-0.5">
+            <span className="text-[10px] text-slate-400 font-medium tracking-wider uppercase block mt-1">
               Member Portal
             </span>
           </div>
@@ -65,10 +60,11 @@ export const Sidebar: React.FC = () => {
       </div>
 
       {/* Navigation Links */}
-      <div className="flex-1 px-4 py-6 space-y-1.5 overflow-y-auto">
-        <div className="px-3 pb-2 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-          Platform Menu
+      <div className="flex-1 px-3 py-6 space-y-1 overflow-y-auto">
+        <div className="px-3 pb-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+          Navigation
         </div>
+
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = currentScreen === item.id;
@@ -79,92 +75,66 @@ export const Sidebar: React.FC = () => {
                 setCurrentScreen(item.id);
                 window.scrollTo({ top: 0, behavior: 'smooth' });
               }}
-              className={`w-full flex items-center justify-between px-3.5 py-3 rounded-xl text-sm font-semibold transition-all cursor-pointer ${
+              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
                 isActive
-                  ? 'bg-gradient-to-r from-emerald-950/80 to-emerald-900/30 text-emerald-300 border border-emerald-500/30 shadow-[0_0_20px_rgba(16,185,129,0.12)]'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-white/[0.04] border border-transparent'
+                  ? 'bg-emerald-500/10 text-emerald-300 border border-emerald-500/25'
+                  : 'text-slate-400 hover:text-white hover:bg-white/[0.04] border border-transparent'
               }`}
             >
-              <div className="flex items-center gap-3">
-                <Icon className={`w-4 h-4 ${isActive ? 'text-emerald-400 stroke-[2.2]' : 'text-slate-400'}`} />
+              <div className="flex items-center gap-2.5">
+                <Icon className={`w-4 h-4 ${isActive ? 'text-emerald-400' : 'text-slate-400'}`} />
                 <span>{item.label}</span>
               </div>
               {isActive && (
-                <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
+                <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
               )}
             </button>
           );
         })}
 
         {/* Sidebar Wallet Glance Widget */}
-        <div className="pt-6">
-          <div className="p-4 rounded-2xl bg-gradient-to-b from-white/[0.05] to-white/[0.02] border border-white/[0.08] relative overflow-hidden group">
-            <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/10 rounded-full blur-xl pointer-events-none group-hover:bg-emerald-500/15 transition-all" />
-            <div className="flex items-center justify-between text-xs text-slate-400 mb-1">
-              <span className="flex items-center gap-1 font-medium">
-                <Wallet className="w-3.5 h-3.5 text-emerald-400" />
-                Available Wallet
-              </span>
+        <div className="pt-6 px-1">
+          <div className="p-4 rounded-xl bg-[#0c1218] border border-white/[0.06] space-y-2">
+            <div className="flex items-center justify-between text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+              <span>Available</span>
+              <Wallet className="w-3.5 h-3.5 text-emerald-400" />
             </div>
-            <div className="text-2xl font-black font-mono text-white tracking-tight tabular-nums my-1">
+            <div className="text-lg font-black font-mono tabular-nums text-white">
               {formatNaira(availableBalance)}
             </div>
-            <div className="flex items-center justify-between pt-2 border-t border-white/[0.06] text-[11px]">
-              <span className="text-slate-500">Min payout: ₦5,000</span>
-              <button
-                onClick={() => setCurrentScreen('wallet')}
-                className="text-emerald-400 hover:text-emerald-300 font-semibold flex items-center gap-0.5 cursor-pointer"
-              >
-                <span>Payout</span>
-                <ArrowUpRight className="w-3 h-3" />
-              </button>
-            </div>
+            <button
+              onClick={() => {
+                setCurrentScreen('wallet');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              className="w-full text-center py-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-[11px] font-bold text-emerald-400 hover:text-emerald-300 transition-colors cursor-pointer"
+            >
+              Open Wallet
+            </button>
           </div>
         </div>
       </div>
 
-      {/* User Footer Profile & Architecture */}
-      <div className="p-4 border-t border-white/[0.06] space-y-3 bg-[#05080b]/60">
+      {/* Footer Actions */}
+      <div className="p-4 border-t border-white/[0.06] space-y-2">
         <button
           onClick={() => setIsArchitectureModalOpen(true)}
-          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-emerald-300 hover:bg-emerald-950/30 border border-white/[0.05] hover:border-emerald-500/30 transition-all cursor-pointer"
+          className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium text-slate-400 hover:text-slate-200 hover:bg-white/[0.04] transition-colors cursor-pointer"
         >
-          <Terminal className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-          <span className="truncate">Supabase Integration Blueprint</span>
+          <div className="flex items-center gap-2">
+            <Terminal className="w-3.5 h-3.5 text-slate-400" />
+            <span>Architecture</span>
+          </div>
+          <ArrowUpRight className="w-3 h-3 text-slate-400" />
         </button>
 
-        <div className="flex items-center justify-between pt-1 px-1">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-slate-800 to-slate-900 border border-white/10 flex items-center justify-center text-xs font-bold text-white shrink-0">
-              {user?.fullName ? user.fullName.charAt(0) : 'N'}
-            </div>
-            <div className="min-w-0">
-              <div className="text-xs font-bold text-white truncate">
-                {user?.fullName || 'NARIVO Member'}
-              </div>
-              <div className="text-[10px] text-emerald-400/90 truncate flex items-center gap-1">
-                {isMembershipActive ? (
-                  <>
-                    <Crown className="w-2.5 h-2.5 text-emerald-400 shrink-0" />
-                    <span>Premium Member</span>
-                  </>
-                ) : (
-                  <>
-                    <ShieldCheck className="w-2.5 h-2.5 text-emerald-400 shrink-0" />
-                    <span>Registered Member</span>
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
-          <button
-            onClick={logout}
-            className="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors cursor-pointer"
-            title="Sign out of portal"
-          >
-            <LogOut className="w-4 h-4" />
-          </button>
-        </div>
+        <button
+          onClick={logout}
+          className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer"
+        >
+          <LogOut className="w-3.5 h-3.5" />
+          <span>Sign Out</span>
+        </button>
       </div>
     </aside>
   );
