@@ -21,6 +21,8 @@ export interface SupportConfig {
   supportEmail: string;
   /** Application route for direct customer inquiries */
   contactRoute: string;
+  /** Full URL for customer support desk or help center */
+  supportUrl: string;
   /** Official support response turnaround */
   responseWindow: string;
 }
@@ -31,5 +33,6 @@ export const SUPPORT_CONFIG: SupportConfig = {
   isTelegramConfigured: false,
   supportEmail: 'support@narivo.site',
   contactRoute: '/contact',
+  supportUrl: 'https://narivo.site/contact',
   responseWindow: 'Typically within 24 business hours',
 };

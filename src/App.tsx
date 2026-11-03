@@ -32,6 +32,7 @@ const MainContent: React.FC = () => {
   const { currentScreen, isAuthenticated, toastMessage } = useApp();
 
   const isPortalScreen = isAuthenticated && ['dashboard', 'tasks', 'wallet', 'referrals', 'profile', 'membership'].includes(currentScreen);
+  const isLanding = currentScreen === 'landing';
 
   const renderScreen = () => {
     switch (currentScreen) {
@@ -69,6 +70,29 @@ const MainContent: React.FC = () => {
         return <NotFoundPage />;
     }
   };
+
+  // Minimal, uncompromised Emerald Glass landing page without duplicate headers or footer menus
+  if (isLanding) {
+    return (
+      <div className="min-h-screen flex flex-col bg-[#022c22] text-slate-100 font-sans selection:bg-emerald-500/30 selection:text-emerald-300 relative overflow-x-hidden">
+        <main className="flex-1 flex flex-col">
+          <LandingPage />
+        </main>
+
+        {/* Reactive Toast Notification */}
+        {toastMessage && (
+          <div 
+            role="status"
+            aria-live="polite"
+            className="fixed bottom-6 right-4 z-50 glass-panel bg-[#064e3b]/95 text-white px-4 py-3 rounded-2xl shadow-[0_10px_30px_rgba(0,0,0,0.6)] border border-emerald-400/30 text-xs font-semibold flex items-center gap-2.5 animate-in slide-in-from-bottom-2 duration-150"
+          >
+            <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)] shrink-0" />
+            <span>{toastMessage}</span>
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-[#06090c] text-slate-100 font-sans selection:bg-emerald-500/30 selection:text-emerald-300 relative overflow-x-hidden">
