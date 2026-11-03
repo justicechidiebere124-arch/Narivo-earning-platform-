@@ -141,3 +141,144 @@
 .animate-fadeIn {
   animation: fadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
+
+/* ==========================================================================
+   NARIVO Landing Page Entrance & Ambient Animations
+   Lightweight, GPU-composited transform/opacity keyframes
+   ========================================================================== */
+
+@keyframes heroLogoIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.92) translateY(8px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes heroHeadingIn {
+  0% {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes heroDescIn {
+  0% {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes heroButtonsIn {
+  0% {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes heroFadeIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes ambientOrbFloat1 {
+  0%, 100% {
+    transform: translate(-50%, 0) scale(1);
+  }
+  50% {
+    transform: translate(-50%, 16px) scale(1.05);
+  }
+}
+
+@keyframes ambientOrbFloat2 {
+  0%, 100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(12px, -14px) scale(1.08);
+  }
+}
+
+@keyframes ambientOrbFloat3 {
+  0%, 100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(-12px, 12px) scale(1.06);
+  }
+}
+
+.anim-hero-logo {
+  animation: heroLogoIn 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.05s both;
+}
+
+.anim-hero-heading {
+  animation: heroHeadingIn 0.75s cubic-bezier(0.16, 1, 0.3, 1) 0.18s both;
+}
+
+.anim-hero-desc {
+  animation: heroDescIn 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.32s both;
+}
+
+.anim-hero-btn-1 {
+  animation: heroButtonsIn 0.65s cubic-bezier(0.16, 1, 0.3, 1) 0.44s both;
+}
+
+.anim-hero-btn-2 {
+  animation: heroButtonsIn 0.65s cubic-bezier(0.16, 1, 0.3, 1) 0.52s both;
+}
+
+.anim-hero-telegram {
+  animation: heroFadeIn 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.64s both;
+}
+
+.anim-ambient-1 {
+  animation: ambientOrbFloat1 14s ease-in-out infinite;
+}
+
+.anim-ambient-2 {
+  animation: ambientOrbFloat2 18s ease-in-out infinite;
+}
+
+.anim-ambient-3 {
+  animation: ambientOrbFloat3 16s ease-in-out infinite;
+}
+
+/* Accessibility: Respect Reduced-Motion Preferences */
+@media (prefers-reduced-motion: reduce) {
+  .anim-hero-logo,
+  .anim-hero-heading,
+  .anim-hero-desc,
+  .anim-hero-btn-1,
+  .anim-hero-btn-2,
+  .anim-hero-telegram,
+  .anim-ambient-1,
+  .anim-ambient-2,
+  .anim-ambient-3 {
+    animation: none !important;
+    transform: none !important;
+    opacity: 1 !important;
+  }
+}
+
