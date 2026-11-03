@@ -40,7 +40,8 @@ export type ScreenType =
   | 'wallet' 
   | 'referrals' 
   | 'profile'
-  | 'membership';
+  | 'membership'
+  | 'not-found';
 
 export const SCREEN_ROUTES: Record<ScreenType, string> = {
   landing: '/',
@@ -57,16 +58,17 @@ export const SCREEN_ROUTES: Record<ScreenType, string> = {
   referrals: '/referrals',
   profile: '/profile',
   membership: '/membership',
+  'not-found': '/404',
 };
 
 export const getScreenFromPathname = (pathname: string): ScreenType => {
   const normalized = pathname.replace(/\/$/, '') || '/';
   for (const [screen, path] of Object.entries(SCREEN_ROUTES)) {
-    if (path === normalized) {
+    if (path === normalized && screen !== 'not-found') {
       return screen as ScreenType;
     }
   }
-  return 'landing';
+  return 'not-found';
 };
 
 interface AuthResponse {

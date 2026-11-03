@@ -4,15 +4,18 @@
  */
 
 import React from 'react';
-import { useApp } from '../../context/AppContext';
-import { ShieldCheck, Banknote, Users2, Database, Code, ArrowUpRight } from 'lucide-react';
+import { useApp, SCREEN_ROUTES, ScreenType } from '../../context/AppContext';
+import { ShieldCheck, Banknote, Code, ArrowUpRight } from 'lucide-react';
 
 export const Footer: React.FC = () => {
   const { setCurrentScreen, setIsArchitectureModalOpen } = useApp();
 
-  const handleNavigate = (screen: any) => {
-    setCurrentScreen(screen);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+  const handleLinkClick = (e: React.MouseEvent<HTMLAnchorElement>, screen: ScreenType) => {
+    if (!e.ctrlKey && !e.metaKey && !e.shiftKey) {
+      e.preventDefault();
+      setCurrentScreen(screen);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
   };
 
   return (
@@ -24,8 +27,9 @@ export const Footer: React.FC = () => {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10 mb-14">
           {/* 1. Brand & Mission */}
           <div className="space-y-4">
-            <button 
-              onClick={() => handleNavigate('landing')}
+            <a 
+              href={SCREEN_ROUTES['landing']}
+              onClick={(e) => handleLinkClick(e, 'landing')}
               className="flex items-center gap-3 text-left cursor-pointer group"
             >
               <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-800 flex items-center justify-center text-white font-extrabold text-base shadow-[0_0_15px_rgba(16,185,129,0.4)] group-hover:shadow-[0_0_20px_rgba(16,185,129,0.6)] transition-all">
@@ -34,7 +38,7 @@ export const Footer: React.FC = () => {
               <span className="font-extrabold text-white text-xl tracking-tight font-heading">
                 NARIVO
               </span>
-            </button>
+            </a>
             <p className="text-xs text-slate-400 leading-relaxed">
               Nigeria’s sponsored-task marketplace connecting members with genuine advertiser-funded campaigns, mobile app testing, consumer research, and feedback activities.
             </p>
@@ -56,44 +60,49 @@ export const Footer: React.FC = () => {
             </h4>
             <ul className="space-y-2.5 text-xs">
               <li>
-                <button 
-                  onClick={() => handleNavigate('landing')}
-                  className="hover:text-emerald-400 transition-colors cursor-pointer text-slate-400 text-left"
+                <a 
+                  href={SCREEN_ROUTES['landing']}
+                  onClick={(e) => handleLinkClick(e, 'landing')}
+                  className="hover:text-emerald-400 transition-colors cursor-pointer text-slate-400 text-left block"
                 >
                   Overview & Opportunities
-                </button>
+                </a>
               </li>
               <li>
-                <button 
-                  onClick={() => handleNavigate('how-it-works')}
-                  className="hover:text-emerald-400 transition-colors cursor-pointer text-slate-400 text-left"
+                <a 
+                  href={SCREEN_ROUTES['how-it-works']}
+                  onClick={(e) => handleLinkClick(e, 'how-it-works')}
+                  className="hover:text-emerald-400 transition-colors cursor-pointer text-slate-400 text-left block"
                 >
-                  How It Works (7 Steps)
-                </button>
+                  How It Works
+                </a>
               </li>
               <li>
-                <button 
-                  onClick={() => handleNavigate('tasks')}
-                  className="hover:text-emerald-400 transition-colors cursor-pointer text-slate-400 text-left"
+                <a 
+                  href={SCREEN_ROUTES['tasks']}
+                  onClick={(e) => handleLinkClick(e, 'tasks')}
+                  className="hover:text-emerald-400 transition-colors cursor-pointer text-slate-400 text-left block"
                 >
                   Sponsored Tasks Directory
-                </button>
+                </a>
               </li>
               <li>
-                <button 
-                  onClick={() => handleNavigate('register')}
-                  className="hover:text-emerald-400 transition-colors cursor-pointer text-slate-400 text-left"
+                <a 
+                  href={SCREEN_ROUTES['register']}
+                  onClick={(e) => handleLinkClick(e, 'register')}
+                  className="hover:text-emerald-400 transition-colors cursor-pointer text-slate-400 text-left block"
                 >
                   Register Free Member Account
-                </button>
+                </a>
               </li>
               <li>
-                <button 
-                  onClick={() => handleNavigate('login')}
-                  className="hover:text-emerald-400 transition-colors cursor-pointer text-slate-400 text-left"
+                <a 
+                  href={SCREEN_ROUTES['login']}
+                  onClick={(e) => handleLinkClick(e, 'login')}
+                  className="hover:text-emerald-400 transition-colors cursor-pointer text-slate-400 text-left block"
                 >
                   Member Sign In
-                </button>
+                </a>
               </li>
             </ul>
           </div>
@@ -105,36 +114,40 @@ export const Footer: React.FC = () => {
             </h4>
             <ul className="space-y-2.5 text-xs text-slate-400">
               <li>
-                <button 
-                  onClick={() => handleNavigate('about')}
-                  className="hover:text-emerald-400 transition-colors cursor-pointer text-slate-400 text-left"
+                <a 
+                  href={SCREEN_ROUTES['about']}
+                  onClick={(e) => handleLinkClick(e, 'about')}
+                  className="hover:text-emerald-400 transition-colors cursor-pointer text-slate-400 text-left block"
                 >
                   About NARIVO Platform
-                </button>
+                </a>
               </li>
               <li>
-                <button 
-                  onClick={() => handleNavigate('contact')}
-                  className="hover:text-emerald-400 transition-colors cursor-pointer text-slate-400 text-left"
+                <a 
+                  href={SCREEN_ROUTES['contact']}
+                  onClick={(e) => handleLinkClick(e, 'contact')}
+                  className="hover:text-emerald-400 transition-colors cursor-pointer text-slate-400 text-left block"
                 >
                   Contact & Support
-                </button>
+                </a>
               </li>
               <li>
-                <button 
-                  onClick={() => handleNavigate('terms')}
-                  className="hover:text-emerald-400 transition-colors cursor-pointer text-slate-400 text-left"
+                <a 
+                  href={SCREEN_ROUTES['terms']}
+                  onClick={(e) => handleLinkClick(e, 'terms')}
+                  className="hover:text-emerald-400 transition-colors cursor-pointer text-slate-400 text-left block"
                 >
                   Terms of Service
-                </button>
+                </a>
               </li>
               <li>
-                <button 
-                  onClick={() => handleNavigate('privacy')}
-                  className="hover:text-emerald-400 transition-colors cursor-pointer text-slate-400 text-left"
+                <a 
+                  href={SCREEN_ROUTES['privacy']}
+                  onClick={(e) => handleLinkClick(e, 'privacy')}
+                  className="hover:text-emerald-400 transition-colors cursor-pointer text-slate-400 text-left block"
                 >
                   Privacy Policy
-                </button>
+                </a>
               </li>
               <li className="pt-1 text-[11px] text-slate-400 flex items-center gap-1.5">
                 <Banknote className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
@@ -168,17 +181,29 @@ export const Footer: React.FC = () => {
             © {new Date().getFullYear()} NARIVO. All rights reserved. NARIVO is an independent Nigerian sponsored task marketplace. Task availability and payouts depend on verified advertiser campaigns. No guaranteed income or investment returns.
           </p>
           <div className="flex items-center gap-3 text-slate-400 shrink-0">
-            <button onClick={() => handleNavigate('terms')} className="hover:text-emerald-400 transition-colors cursor-pointer">
+            <a 
+              href={SCREEN_ROUTES['terms']}
+              onClick={(e) => handleLinkClick(e, 'terms')}
+              className="hover:text-emerald-400 transition-colors cursor-pointer"
+            >
               Terms
-            </button>
+            </a>
             <span>·</span>
-            <button onClick={() => handleNavigate('privacy')} className="hover:text-emerald-400 transition-colors cursor-pointer">
+            <a 
+              href={SCREEN_ROUTES['privacy']}
+              onClick={(e) => handleLinkClick(e, 'privacy')}
+              className="hover:text-emerald-400 transition-colors cursor-pointer"
+            >
               Privacy
-            </button>
+            </a>
             <span>·</span>
-            <button onClick={() => handleNavigate('contact')} className="hover:text-emerald-400 transition-colors cursor-pointer">
+            <a 
+              href={SCREEN_ROUTES['contact']}
+              onClick={(e) => handleLinkClick(e, 'contact')}
+              className="hover:text-emerald-400 transition-colors cursor-pointer"
+            >
               Contact
-            </button>
+            </a>
           </div>
         </div>
       </div>

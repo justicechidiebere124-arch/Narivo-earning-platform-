@@ -26,6 +26,7 @@ import { WalletPage } from './components/pages/WalletPage';
 import { ReferralPage } from './components/pages/ReferralPage';
 import { ProfilePage } from './components/pages/ProfilePage';
 import { MembershipPage } from './components/pages/MembershipPage';
+import { NotFoundPage } from './components/pages/NotFoundPage';
 
 const MainContent: React.FC = () => {
   const { currentScreen, isAuthenticated, toastMessage } = useApp();
@@ -62,8 +63,10 @@ const MainContent: React.FC = () => {
         return <ProfilePage />;
       case 'membership':
         return <MembershipPage />;
+      case 'not-found':
+        return <NotFoundPage />;
       default:
-        return <LandingPage />;
+        return <NotFoundPage />;
     }
   };
 

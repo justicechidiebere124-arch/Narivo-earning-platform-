@@ -37,12 +37,21 @@ export const Sidebar: React.FC = () => {
     { id: 'profile', label: 'Profile', icon: User },
   ];
 
+  const handleLinkClick = (e: React.MouseEvent<HTMLAnchorElement>, screen: ScreenType) => {
+    if (!e.ctrlKey && !e.metaKey && !e.shiftKey) {
+      e.preventDefault();
+      setCurrentScreen(screen);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
   return (
     <aside className="hidden lg:flex w-64 flex-col shrink-0 min-h-screen border-r border-white/[0.07] bg-[#070b10] sticky top-0 z-30">
       {/* Brand Header */}
       <div className="h-18 px-6 flex items-center justify-between border-b border-white/[0.06]">
-        <button
-          onClick={() => setCurrentScreen('dashboard')}
+        <a
+          href="/dashboard"
+          onClick={(e) => handleLinkClick(e, 'dashboard')}
           className="flex items-center gap-3 text-left cursor-pointer group"
         >
           <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center text-slate-950 font-black text-base shadow-[0_2px_12px_rgba(16,185,129,0.3)]">
@@ -56,7 +65,7 @@ export const Sidebar: React.FC = () => {
               Member Portal
             </span>
           </div>
-        </button>
+        </a>
       </div>
 
       {/* Navigation Links */}
@@ -69,12 +78,10 @@ export const Sidebar: React.FC = () => {
           const Icon = item.icon;
           const isActive = currentScreen === item.id;
           return (
-            <button
+            <a
               key={item.id}
-              onClick={() => {
-                setCurrentScreen(item.id);
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-              }}
+              href={`/${item.id === 'dashboard' ? 'dashboard' : item.id}`}
+              onClick={(e) => handleLinkClick(e, item.id)}
               className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
                 isActive
                   ? 'bg-emerald-500/10 text-emerald-300 border border-emerald-500/25'
@@ -88,7 +95,7 @@ export const Sidebar: React.FC = () => {
               {isActive && (
                 <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
               )}
-            </button>
+            </a>
           );
         })}
 

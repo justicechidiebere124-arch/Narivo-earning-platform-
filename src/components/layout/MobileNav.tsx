@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import { useApp } from '../../context/AppContext';
+import { useApp, SCREEN_ROUTES, ScreenType } from '../../context/AppContext';
 import { 
   Home, 
   CheckSquare, 
@@ -18,22 +18,30 @@ import {
 export const MobileNav: React.FC = () => {
   const { currentScreen, setCurrentScreen, isAuthenticated } = useApp();
 
-  const authenticatedTabs = [
+  const authenticatedTabs: { id: ScreenType; label: string; icon: typeof Home }[] = [
     { id: 'dashboard', label: 'Home', icon: Home },
     { id: 'tasks', label: 'Tasks', icon: CheckSquare },
     { id: 'wallet', label: 'Wallet', icon: Wallet },
     { id: 'referrals', label: 'Referrals', icon: Users },
     { id: 'profile', label: 'Profile', icon: User },
-  ] as const;
+  ];
 
-  const publicTabs = [
+  const publicTabs: { id: ScreenType; label: string; icon: typeof Home }[] = [
     { id: 'landing', label: 'Home', icon: Home },
     { id: 'tasks', label: 'Tasks', icon: CheckSquare },
     { id: 'login', label: 'Log In', icon: LogIn },
     { id: 'register', label: 'Register', icon: UserPlus },
-  ] as const;
+  ];
 
   const currentTabs = isAuthenticated ? authenticatedTabs : publicTabs;
+
+  const handleLinkClick = (e: React.MouseEvent<HTMLAnchorElement>, screen: ScreenType) => {
+    if (!e.ctrlKey && !e.metaKey && !e.shiftKey) {
+      e.preventDefault();
+      setCurrentScreen(screen);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
 
   return (
     <nav 
@@ -45,12 +53,10 @@ export const MobileNav: React.FC = () => {
           const Icon = tab.icon;
           const isActive = currentScreen === tab.id;
           return (
-            <button
+            <a
               key={tab.id}
-              onClick={() => {
-                setCurrentScreen(tab.id);
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-              }}
+              href={SCREEN_ROUTES[tab.id]}
+              onClick={(e) => handleLinkClick(e, tab.id)}
               className={`min-h-[48px] min-w-[44px] flex flex-col items-center justify-center transition-all duration-150 cursor-pointer relative py-1 rounded-xl ${
                 isActive 
                   ? 'text-emerald-400' 
@@ -71,7 +77,7 @@ export const MobileNav: React.FC = () => {
               }`}>
                 {tab.label}
               </span>
-            </button>
+            </a>
           );
         })}
       </div>
