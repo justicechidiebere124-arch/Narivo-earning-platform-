@@ -378,7 +378,7 @@ export const WalletPage: React.FC = () => {
           <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/[0.06] text-xs text-slate-400 space-y-2">
             <div className="flex items-center gap-1.5 text-white font-semibold">
               <ShieldCheck className="w-4 h-4 text-emerald-400" />
-              <span>Settlement Guarantee</span>
+              <span>Settlement Policy</span>
             </div>
             <p className="text-[11px] text-slate-400 leading-relaxed">
               Withdrawals reserve funds atomically from your available balance. Administrators review and transfer funds directly to your verified commercial bank account.

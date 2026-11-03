@@ -28,6 +28,11 @@ import type { User as SupabaseAuthUser } from '@supabase/supabase-js';
 
 export type ScreenType = 
   | 'landing' 
+  | 'about'
+  | 'how-it-works'
+  | 'contact'
+  | 'terms'
+  | 'privacy'
   | 'register' 
   | 'login' 
   | 'dashboard' 
@@ -36,6 +41,33 @@ export type ScreenType =
   | 'referrals' 
   | 'profile'
   | 'membership';
+
+export const SCREEN_ROUTES: Record<ScreenType, string> = {
+  landing: '/',
+  about: '/about',
+  'how-it-works': '/how-it-works',
+  contact: '/contact',
+  terms: '/terms',
+  privacy: '/privacy',
+  register: '/register',
+  login: '/login',
+  dashboard: '/dashboard',
+  tasks: '/tasks',
+  wallet: '/wallet',
+  referrals: '/referrals',
+  profile: '/profile',
+  membership: '/membership',
+};
+
+export const getScreenFromPathname = (pathname: string): ScreenType => {
+  const normalized = pathname.replace(/\/$/, '') || '/';
+  for (const [screen, path] of Object.entries(SCREEN_ROUTES)) {
+    if (path === normalized) {
+      return screen as ScreenType;
+    }
+  }
+  return 'landing';
+};
 
 interface AuthResponse {
   success: boolean;
@@ -175,7 +207,12 @@ const mapSupabaseDataToProfile = (
 };
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [currentScreen, setCurrentScreenState] = useState<ScreenType>('landing');
+  const [currentScreen, setCurrentScreenState] = useState<ScreenType>(() => {
+    if (typeof window !== 'undefined') {
+      return getScreenFromPathname(window.location.pathname);
+    }
+    return 'landing';
+  });
   const [authLoading, setAuthLoading] = useState<boolean>(true);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [user, setUser] = useState<UserProfile | null>(null);
@@ -229,16 +266,128 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, []);
 
   // Protected member-only routes
-  const protectedScreens: ScreenType[] = ['dashboard', 'tasks', 'wallet', 'referrals', 'profile', 'membership'];
+  const protectedScreens: ScreenType[] = ['dashboard', 'wallet', 'referrals', 'profile', 'membership'];
 
-  const setCurrentScreen = (screen: ScreenType) => {
+  const setCurrentScreen = useCallback((screen: ScreenType) => {
     if (protectedScreens.includes(screen) && !isAuthenticated) {
-      showToast('Authentication required. Please sign in to access the member terminal.');
+      showToast('Authentication required. Please sign in to access your member account.');
       setCurrentScreenState('login');
+      if (typeof window !== 'undefined') {
+        const path = SCREEN_ROUTES['login'];
+        if (window.location.pathname !== path) {
+          window.history.pushState(null, '', path);
+        }
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
       return;
     }
+
     setCurrentScreenState(screen);
-  };
+    if (typeof window !== 'undefined') {
+      const path = SCREEN_ROUTES[screen] || '/';
+      if (window.location.pathname !== path) {
+        window.history.pushState(null, '', path);
+      }
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, [isAuthenticated, protectedScreens, showToast]);
+
+  // Synchronize browser back/forward buttons (popstate)
+  useEffect(() => {
+    const handlePopState = () => {
+      const screen = getScreenFromPathname(window.location.pathname);
+      setCurrentScreenState(screen);
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  // Public data fetcher (campaigns & membership plans accessible publicly)
+  const fetchPublicData = useCallback(async () => {
+    if (!isSupabaseConfigured) return;
+    setTasksLoading(true);
+    try {
+      // 1. Fetch public.membership_plans
+      const { data: mpData } = await supabase
+        .from('membership_plans')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (mpData) {
+        setMembershipPlans(mpData as DatabaseMembershipPlan[]);
+      }
+
+      // 2. Fetch public.sponsored_tasks with active campaigns
+      const { data: stData, error: stErr } = await supabase
+        .from('sponsored_tasks')
+        .select('*, sponsored_campaigns(*)')
+        .eq('status', 'active')
+        .order('created_at', { ascending: false });
+
+      if (stErr) {
+        console.warn('Error reading public.sponsored_tasks:', stErr.message);
+        setTasksError(stErr.message);
+        setTasks([]);
+      } else if (stData && stData.length > 0) {
+        const rawTasks = stData as DatabaseSponsoredTask[];
+        const now = Date.now();
+
+        // Display only genuinely active campaigns and tasks
+        const activeTasks = rawTasks.filter((t) => {
+          if (t.status !== 'active') return false;
+          if (t.sponsored_campaigns) {
+            const camp = t.sponsored_campaigns;
+            if (camp.status && camp.status !== 'active') return false;
+            if (camp.starts_at && new Date(camp.starts_at).getTime() > now) return false;
+            if (camp.ends_at && new Date(camp.ends_at).getTime() < now) return false;
+          }
+          return true;
+        });
+
+        const mappedTasks: SponsoredTask[] = activeTasks.map((t) => {
+          let inst: string[] = [];
+          if (Array.isArray(t.instructions)) {
+            inst = t.instructions;
+          } else if (typeof t.instructions === 'string') {
+            inst = t.instructions.split('\n').filter(Boolean);
+          } else {
+            inst = ['Follow the verified campaign instructions provided.'];
+          }
+
+          return {
+            id: t.id,
+            title: t.title,
+            category: 'Sponsored Campaign',
+            sponsorName: t.sponsored_campaigns?.title || 'Verified Advertiser',
+            rewardNaira: (t.reward_kobo || 0) / 100,
+            totalSlots: 100,
+            remainingSlots: 50,
+            estimatedMinutes: 5,
+            instructions: inst,
+            proofRequirements: {
+              type: 'link',
+              description: 'Submit proof URL or verification screenshot as requested.',
+            },
+            verificationWindowHours: 24,
+            status: 'active',
+            createdAt: t.created_at,
+            campaignType: 'verified_sponsor',
+          };
+        });
+        setTasks(mappedTasks);
+        setTasksError(null);
+      } else {
+        setTasks([]);
+        setTasksError(null);
+      }
+    } catch (err: any) {
+      console.warn('Failed to fetch public tasks & plans:', err);
+      setTasksError(err?.message || 'Database query error');
+      setTasks([]);
+    } finally {
+      setTasksLoading(false);
+    }
+  }, []);
 
   // =========================================================================
   // SUPABASE DATA FETCHING (STRICTLY FROM DATABASE TABLES & VIEWS)
@@ -573,14 +722,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, []);
 
   const refreshAllData = useCallback(async () => {
+    await fetchPublicData();
     if (!user) return;
     await fetchUserData(user.id);
-  }, [user, fetchUserData]);
+  }, [user, fetchPublicData, fetchUserData]);
 
   const refreshMembership = useCallback(async () => {
+    await fetchPublicData();
     if (!user) return;
     await fetchUserData(user.id);
-  }, [user, fetchUserData]);
+  }, [user, fetchPublicData, fetchUserData]);
 
   // =========================================================================
   // SUPABASE SESSION PERSISTENCE & AUTH LISTENER
@@ -595,6 +746,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
 
       try {
+        // Fetch public marketplace and plans for all users
+        await fetchPublicData();
+
         const { data: { session }, error } = await supabase.auth.getSession();
         if (error) {
           console.warn('Supabase auth getSession error:', error.message);

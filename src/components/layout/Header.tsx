@@ -55,12 +55,12 @@ export const Header: React.FC = () => {
         </button>
 
         {/* Desktop Navigation Links */}
-        <nav className="hidden md:flex items-center gap-1.5 text-xs font-semibold text-slate-300">
+        <nav className="hidden md:flex items-center gap-1 text-xs font-semibold text-slate-300">
           {!isAuthenticated ? (
             <>
               <button 
                 onClick={() => navigateTo('landing')} 
-                className={`px-3.5 py-2 rounded-xl transition-all cursor-pointer ${
+                className={`px-3 py-2 rounded-xl transition-all cursor-pointer ${
                   currentScreen === 'landing' 
                     ? 'text-white bg-white/[0.08]' 
                     : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
@@ -69,14 +69,44 @@ export const Header: React.FC = () => {
                 Overview
               </button>
               <button 
+                onClick={() => navigateTo('how-it-works')} 
+                className={`px-3 py-2 rounded-xl transition-all cursor-pointer ${
+                  currentScreen === 'how-it-works' 
+                    ? 'text-white bg-white/[0.08]' 
+                    : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
+                }`}
+              >
+                How It Works
+              </button>
+              <button 
                 onClick={() => navigateTo('tasks')} 
-                className={`px-3.5 py-2 rounded-xl transition-all cursor-pointer ${
+                className={`px-3 py-2 rounded-xl transition-all cursor-pointer ${
                   currentScreen === 'tasks' 
                     ? 'text-white bg-white/[0.08]' 
                     : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
                 }`}
               >
                 Campaigns
+              </button>
+              <button 
+                onClick={() => navigateTo('about')} 
+                className={`px-3 py-2 rounded-xl transition-all cursor-pointer ${
+                  currentScreen === 'about' 
+                    ? 'text-white bg-white/[0.08]' 
+                    : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
+                }`}
+              >
+                About
+              </button>
+              <button 
+                onClick={() => navigateTo('contact')} 
+                className={`px-3 py-2 rounded-xl transition-all cursor-pointer ${
+                  currentScreen === 'contact' 
+                    ? 'text-white bg-white/[0.08]' 
+                    : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
+                }`}
+              >
+                Contact
               </button>
             </>
           ) : (
@@ -214,29 +244,61 @@ export const Header: React.FC = () => {
               <>
                 <button
                   onClick={() => navigateTo('landing')}
-                  className="w-full text-left px-3 py-2.5 rounded-xl text-xs font-medium text-slate-200 hover:bg-white/[0.06] min-h-[44px] flex items-center"
+                  className="w-full text-left px-3 py-2 rounded-xl text-xs font-medium text-slate-200 hover:bg-white/[0.06] min-h-[40px] flex items-center"
                 >
-                  Overview & How It Works
+                  Overview
+                </button>
+                <button
+                  onClick={() => navigateTo('how-it-works')}
+                  className="w-full text-left px-3 py-2 rounded-xl text-xs font-medium text-slate-200 hover:bg-white/[0.06] min-h-[40px] flex items-center"
+                >
+                  How It Works
                 </button>
                 <button
                   onClick={() => navigateTo('tasks')}
-                  className="w-full text-left px-3 py-2.5 rounded-xl text-xs font-medium text-slate-200 hover:bg-white/[0.06] min-h-[44px] flex items-center"
+                  className="w-full text-left px-3 py-2 rounded-xl text-xs font-medium text-slate-200 hover:bg-white/[0.06] min-h-[40px] flex items-center"
                 >
-                  Campaigns
+                  Campaign Tasks
                 </button>
                 <button
-                  onClick={() => navigateTo('login')}
-                  className="w-full text-left px-3 py-2.5 rounded-xl text-xs font-medium text-slate-200 hover:bg-white/[0.06] min-h-[44px] flex items-center"
+                  onClick={() => navigateTo('about')}
+                  className="w-full text-left px-3 py-2 rounded-xl text-xs font-medium text-slate-200 hover:bg-white/[0.06] min-h-[40px] flex items-center"
                 >
-                  Log In
+                  About NARIVO
                 </button>
                 <button
-                  onClick={() => navigateTo('register')}
-                  className="w-full text-center mt-2 px-4 py-3 rounded-xl text-xs font-bold text-white btn-emerald-primary min-h-[44px] flex items-center justify-center gap-2"
+                  onClick={() => navigateTo('contact')}
+                  className="w-full text-left px-3 py-2 rounded-xl text-xs font-medium text-slate-200 hover:bg-white/[0.06] min-h-[40px] flex items-center"
                 >
-                  <span>Register Free Account</span>
-                  <ArrowRight className="w-4 h-4" />
+                  Contact Support
                 </button>
+                <button
+                  onClick={() => navigateTo('terms')}
+                  className="w-full text-left px-3 py-2 rounded-xl text-xs font-medium text-slate-200 hover:bg-white/[0.06] min-h-[40px] flex items-center"
+                >
+                  Terms of Service
+                </button>
+                <button
+                  onClick={() => navigateTo('privacy')}
+                  className="w-full text-left px-3 py-2 rounded-xl text-xs font-medium text-slate-200 hover:bg-white/[0.06] min-h-[40px] flex items-center"
+                >
+                  Privacy Policy
+                </button>
+                <div className="pt-2 border-t border-white/[0.08] space-y-2">
+                  <button
+                    onClick={() => navigateTo('login')}
+                    className="w-full text-left px-3 py-2.5 rounded-xl text-xs font-medium text-slate-200 hover:bg-white/[0.06] min-h-[44px] flex items-center"
+                  >
+                    Log In
+                  </button>
+                  <button
+                    onClick={() => navigateTo('register')}
+                    className="w-full text-center px-4 py-3 rounded-xl text-xs font-bold text-white btn-emerald-primary min-h-[44px] flex items-center justify-center gap-2"
+                  >
+                    <span>Register Free Account</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+                </div>
               </>
             ) : (
               <>

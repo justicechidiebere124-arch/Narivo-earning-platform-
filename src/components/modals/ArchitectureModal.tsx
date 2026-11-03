@@ -40,7 +40,7 @@ export const ArchitectureModal: React.FC = () => {
                 NARIVO Backend & Deployment Architecture
               </h3>
               <p className="text-xs text-slate-400">
-                Blueprint: Supabase PostgreSQL RLS, Paystack NIP Transfers & GitHub CI/CD
+                Blueprint: Supabase PostgreSQL RLS, Manual Payout Review Workflow & CI/CD
               </p>
             </div>
           </div>
@@ -208,10 +208,10 @@ VITE_SUPABASE_ANON_KEY="sb_publishable_HhSks_J_-BkxZ3Mf7OKLvA_kI7RZHIZ"`}
           {activeTab === 'paystack' && (
             <div className="space-y-4">
               <h4 className="text-sm font-bold text-white font-heading">
-                Paystack NIP Nigerian Bank Transfers Integration
+                Paystack Bank Payouts Architecture (Planned Integration)
               </h4>
               <p className="text-slate-400">
-                NARIVO connects to Paystack Transfers API to resolve Nigerian NUBAN recipient account names and dispatch batch withdrawals.
+                In future production phases, NARIVO is architected to integrate with Paystack Transfers API to resolve Nigerian NUBAN recipient account names and automate approved withdrawals. At current launch, all bank payouts undergo human administrative review and are processed manually.
               </p>
 
               <div className="p-4 rounded-2xl bg-black/60 border border-white/[0.08] space-y-2">

@@ -13,6 +13,11 @@ import { MobileNav } from './components/layout/MobileNav';
 import { TaskSubmitModal } from './components/modals/TaskSubmitModal';
 import { ArchitectureModal } from './components/modals/ArchitectureModal';
 import { LandingPage } from './components/pages/LandingPage';
+import { AboutPage } from './components/pages/AboutPage';
+import { HowItWorksPage } from './components/pages/HowItWorksPage';
+import { ContactPage } from './components/pages/ContactPage';
+import { TermsPage } from './components/pages/TermsPage';
+import { PrivacyPage } from './components/pages/PrivacyPage';
 import { RegisterPage } from './components/pages/RegisterPage';
 import { LoginPage } from './components/pages/LoginPage';
 import { MemberDashboard } from './components/pages/MemberDashboard';
@@ -25,12 +30,22 @@ import { MembershipPage } from './components/pages/MembershipPage';
 const MainContent: React.FC = () => {
   const { currentScreen, isAuthenticated, toastMessage } = useApp();
 
-  const isPortalScreen = isAuthenticated && ['dashboard', 'tasks', 'wallet', 'referrals', 'profile', 'membership'].includes(currentScreen);
+  const isPortalScreen = isAuthenticated && ['dashboard', 'wallet', 'referrals', 'profile', 'membership'].includes(currentScreen);
 
   const renderScreen = () => {
     switch (currentScreen) {
       case 'landing':
         return <LandingPage />;
+      case 'about':
+        return <AboutPage />;
+      case 'how-it-works':
+        return <HowItWorksPage />;
+      case 'contact':
+        return <ContactPage />;
+      case 'terms':
+        return <TermsPage />;
+      case 'privacy':
+        return <PrivacyPage />;
       case 'register':
         return <RegisterPage />;
       case 'login':

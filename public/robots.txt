@@ -1,4 +1,14 @@
 User-agent: *
 Allow: /
+Allow: /about
+Allow: /how-it-works
+Allow: /contact
+Allow: /terms
+Allow: /privacy
+Disallow: /dashboard
+Disallow: /wallet
+Disallow: /referrals
+Disallow: /profile
+Disallow: /membership
 
 Sitemap: https://narivo.site/sitemap.xml
