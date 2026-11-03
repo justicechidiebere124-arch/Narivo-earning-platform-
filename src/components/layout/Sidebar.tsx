@@ -16,7 +16,6 @@ import {
   LogOut, 
   ArrowUpRight,
   ShieldCheck,
-  Sparkles,
   Crown
 } from 'lucide-react';
 
@@ -26,7 +25,7 @@ export const Sidebar: React.FC = () => {
     setCurrentScreen, 
     user, 
     availableBalance, 
-    isDemoAccount, 
+    isMembershipActive,
     logout, 
     setIsArchitectureModalOpen 
   } = useApp();
@@ -37,7 +36,7 @@ export const Sidebar: React.FC = () => {
     { id: 'wallet', label: 'Wallet & Payouts', icon: Wallet },
     { id: 'membership', label: 'Membership Tiers', icon: Crown },
     { id: 'referrals', label: 'Referral Network', icon: Users },
-    { id: 'profile', label: 'Security & Profile', icon: User },
+    { id: 'profile', label: 'Profile & Bank', icon: User },
   ];
 
   return (
@@ -59,7 +58,7 @@ export const Sidebar: React.FC = () => {
               NARIVO
             </span>
             <span className="text-[10px] text-emerald-400 font-medium tracking-widest uppercase block -mt-0.5">
-              Premium Portal
+              Member Portal
             </span>
           </div>
         </button>
@@ -106,11 +105,6 @@ export const Sidebar: React.FC = () => {
                 <Wallet className="w-3.5 h-3.5 text-emerald-400" />
                 Available Wallet
               </span>
-              {isDemoAccount && (
-                <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 font-bold uppercase">
-                  Demo
-                </span>
-              )}
             </div>
             <div className="text-2xl font-black font-mono text-white tracking-tight tabular-nums my-1">
               {formatNaira(availableBalance)}
@@ -136,7 +130,7 @@ export const Sidebar: React.FC = () => {
           className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-emerald-300 hover:bg-emerald-950/30 border border-white/[0.05] hover:border-emerald-500/30 transition-all cursor-pointer"
         >
           <Terminal className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-          <span className="truncate">Supabase & Paystack Blueprint</span>
+          <span className="truncate">Supabase Integration Blueprint</span>
         </button>
 
         <div className="flex items-center justify-between pt-1 px-1">
@@ -146,11 +140,20 @@ export const Sidebar: React.FC = () => {
             </div>
             <div className="min-w-0">
               <div className="text-xs font-bold text-white truncate">
-                {user?.fullName || 'Justice Chidiebere'}
+                {user?.fullName || 'NARIVO Member'}
               </div>
               <div className="text-[10px] text-emerald-400/90 truncate flex items-center gap-1">
-                <ShieldCheck className="w-2.5 h-2.5 shrink-0" />
-                <span>Standard Member</span>
+                {isMembershipActive ? (
+                  <>
+                    <Crown className="w-2.5 h-2.5 text-emerald-400 shrink-0" />
+                    <span>Premium Member</span>
+                  </>
+                ) : (
+                  <>
+                    <ShieldCheck className="w-2.5 h-2.5 text-emerald-400 shrink-0" />
+                    <span>Registered Member</span>
+                  </>
+                )}
               </div>
             </div>
           </div>

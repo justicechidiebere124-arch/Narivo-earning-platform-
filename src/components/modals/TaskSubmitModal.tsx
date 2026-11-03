@@ -32,7 +32,7 @@ export const TaskSubmitModal: React.FC = () => {
 
   const task = selectedTaskForSubmission;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
 
@@ -51,20 +51,21 @@ export const TaskSubmitModal: React.FC = () => {
     }
 
     setIsSubmitting(true);
-    setTimeout(() => {
-      const result = submitTaskProof(task.id, {
+    try {
+      const result = await submitTaskProof(task.id, {
         proofUrl: proofUrl.trim() || (uploadedFileName ? `https://storage.narivo.internal/proofs/${uploadedFileName}` : undefined),
         proofUsername: proofUsername.trim() || undefined,
         proofNotes: proofNotes.trim() || undefined,
       });
 
-      setIsSubmitting(false);
       if (result.success) {
         setSelectedTaskForSubmission(null);
       } else {
         setErrorMsg(result.message);
       }
-    }, 400);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleSimulateFile = (e: React.ChangeEvent<HTMLInputElement>) => {

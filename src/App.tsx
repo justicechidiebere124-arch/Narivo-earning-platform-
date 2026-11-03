@@ -5,7 +5,6 @@
 
 import React from 'react';
 import { AppProvider, useApp } from './context/AppContext';
-import { DemoNoticeBanner } from './components/layout/DemoNoticeBanner';
 import { EmailVerificationBanner } from './components/layout/EmailVerificationBanner';
 import { Header } from './components/layout/Header';
 import { Sidebar } from './components/layout/Sidebar';
@@ -56,7 +55,6 @@ const MainContent: React.FC = () => {
   return (
     <div className="min-h-screen flex flex-col bg-[#06090c] text-slate-100 font-sans selection:bg-emerald-500/30 selection:text-emerald-300 relative overflow-x-hidden">
       {/* Top Notice Banner */}
-      <DemoNoticeBanner />
       <EmailVerificationBanner />
 
       {/* Main Layout Container */}

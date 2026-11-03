@@ -8,12 +8,12 @@ import { useApp } from '../../context/AppContext';
 import { Mail, AlertTriangle, ArrowRight, CheckCircle2, RefreshCw } from 'lucide-react';
 
 export const EmailVerificationBanner: React.FC = () => {
-  const { user, isAuthenticated, isDemoAccount, resendVerificationEmail, showToast } = useApp();
+  const { user, isAuthenticated, resendVerificationEmail, showToast } = useApp();
   const [isResending, setIsResending] = useState(false);
   const [resendSent, setResendSent] = useState(false);
 
   // Only show for real authenticated accounts that have not verified their email
-  if (!isAuthenticated || isDemoAccount || !user || user.isEmailVerified) {
+  if (!isAuthenticated || !user || user.isEmailVerified) {
     return null;
   }
 

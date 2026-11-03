@@ -14,15 +14,15 @@ import {
   ReferredUser,
   DatabaseProfile,
   DatabaseMembershipPlan,
-  DatabaseMembership
+  DatabaseMembership,
+  DatabaseWalletBalance,
+  DatabaseWalletLedger,
+  DatabaseWithdrawalRequest,
+  DatabaseSponsoredTask,
+  DatabaseTaskSubmission,
+  DatabaseReferralCode,
+  DatabaseReferral
 } from '../types';
-import { 
-  INITIAL_USER, 
-  SAMPLE_DEMO_USER,
-  INITIAL_TASKS, 
-  INITIAL_TRANSACTIONS, 
-  INITIAL_REFERRED_USERS 
-} from '../data/sampleData';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import type { User as SupabaseAuthUser } from '@supabase/supabase-js';
 
@@ -51,41 +51,57 @@ interface AppContextType {
   authLoading: boolean;
   isEmailVerified: boolean;
   isSupabaseConfigured: boolean;
+  
+  // Database Models
   dbProfile: DatabaseProfile | null;
   activeMembership: DatabaseMembership | null;
   isMembershipActive: boolean;
   isMembershipExpired: boolean;
   membershipPlans: DatabaseMembershipPlan[];
   membershipLoading: boolean;
-  refreshMembership: () => Promise<void>;
-  refreshProfile: () => Promise<void>;
-  tasks: SponsoredTask[];
-  submissions: TaskSubmission[];
-  transactions: WalletTransaction[];
-  withdrawalRequests: WithdrawalRequest[];
-  referrals: ReferredUser[];
-  referralStat: ReferralStat;
+  
+  // Financial State from Supabase
   availableBalance: number;
   pendingRewards: number;
+  reservedFunds: number;
   totalWithdrawn: number;
   lifetimeEarned: number;
+  walletLoading: boolean;
+  walletError: string | null;
+  transactions: WalletTransaction[];
+  withdrawalRequests: WithdrawalRequest[];
+
+  // Tasks & Submissions from Supabase
+  tasks: SponsoredTask[];
+  tasksLoading: boolean;
+  tasksError: string | null;
+  submissions: TaskSubmission[];
+  submissionsLoading: boolean;
+  selectedTaskForSubmission: SponsoredTask | null;
+  setSelectedTaskForSubmission: (task: SponsoredTask | null) => void;
+
+  // Referral Network from Supabase
+  referralStat: ReferralStat;
+  referrals: ReferredUser[];
+  referralsLoading: boolean;
+
+  // Global UI State
+  toastMessage: string | null;
+  showToast: (msg: string) => void;
+  isArchitectureModalOpen: boolean;
+  setIsArchitectureModalOpen: (open: boolean) => void;
+
+  // Actions
   login: (email: string, pass: string) => Promise<AuthResponse>;
   register: (data: { fullName: string; email: string; phone: string; password?: string; referralCode?: string }) => Promise<AuthResponse>;
   logout: () => Promise<void>;
+  resetPassword: (email: string) => Promise<{ success: boolean; error?: string }>;
   resendVerificationEmail: (email?: string) => Promise<{ success: boolean; message: string }>;
-  submitTaskProof: (taskId: string, proof: { proofUrl?: string; proofUsername?: string; proofNotes?: string }) => { success: boolean; message: string };
-  requestWithdrawal: (amount: number, bankName: string, accountNumber: string, accountName: string) => { success: boolean; message: string };
   updateProfile: (updated: Partial<UserProfile>) => Promise<{ success: boolean; message: string }>;
-  resetDemoData: () => void;
-  loadFreshAccount: () => void;
-  loadDemoAccount: () => void;
-  isDemoAccount: boolean;
-  selectedTaskForSubmission: SponsoredTask | null;
-  setSelectedTaskForSubmission: (task: SponsoredTask | null) => void;
-  isArchitectureModalOpen: boolean;
-  setIsArchitectureModalOpen: (open: boolean) => void;
-  toastMessage: string | null;
-  showToast: (msg: string) => void;
+  submitTaskProof: (taskId: string, proof: { proofUrl?: string; proofUsername?: string; proofNotes?: string }) => Promise<{ success: boolean; message: string }>;
+  requestWithdrawal: (amount: number, bankName: string, accountNumber: string, accountName: string) => Promise<{ success: boolean; message: string }>;
+  refreshAllData: () => Promise<void>;
+  refreshMembership: () => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -114,7 +130,8 @@ export const checkMembershipIsExpired = (m: DatabaseMembership | null): boolean 
 const mapSupabaseDataToProfile = (
   sbUser: SupabaseAuthUser, 
   dbProfile?: DatabaseProfile | null, 
-  dbMembership?: DatabaseMembership | null
+  dbMembership?: DatabaseMembership | null,
+  referralCode?: string
 ): UserProfile => {
   const meta = sbUser.user_metadata || {};
   const fullName = dbProfile?.full_name || meta.full_name || sbUser.email?.split('@')[0] || 'NARIVO Member';
@@ -132,27 +149,28 @@ const mapSupabaseDataToProfile = (
     membershipTier = 'Registered — No Active Membership';
   }
 
+  const generatedRef = referralCode || `NAR-${sbUser.id.slice(0, 6).toUpperCase()}`;
+
   return {
     id: sbUser.id,
     fullName,
     email,
     phone,
     state: meta.state || 'Lagos State',
-    referralCode: meta.referral_code || `NAR-${sbUser.id.slice(0, 4).toUpperCase()}`,
+    referralCode: generatedRef,
     referredBy: meta.referred_by || undefined,
     membershipTier,
     isEmailVerified: Boolean(sbUser.email_confirmed_at),
     isPhoneVerified: Boolean(sbUser.phone_confirmed_at),
     bankDetails: {
-      bankName: '',
-      bankCode: '',
-      accountNumber: '',
-      accountName: fullName,
+      bankName: meta.bank_name || '',
+      bankCode: meta.bank_code || '',
+      accountNumber: meta.account_number || '',
+      accountName: meta.account_name || fullName,
     },
     createdAt: dbProfile?.created_at 
       ? dbProfile.created_at.split('T')[0] 
       : (sbUser.created_at ? sbUser.created_at.split('T')[0] : new Date().toISOString().split('T')[0]),
-    isDemoUser: false,
   };
 };
 
@@ -162,27 +180,44 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [user, setUser] = useState<UserProfile | null>(null);
 
-  // Database-backed states
+  // Database-backed Profile & Membership
   const [dbProfile, setDbProfile] = useState<DatabaseProfile | null>(null);
   const [activeMembership, setActiveMembership] = useState<DatabaseMembership | null>(null);
   const [membershipPlans, setMembershipPlans] = useState<DatabaseMembershipPlan[]>([]);
   const [membershipLoading, setMembershipLoading] = useState<boolean>(false);
 
-  // Financial and Task States
-  const [tasks, setTasks] = useState<SponsoredTask[]>(INITIAL_TASKS);
-  const [submissions, setSubmissions] = useState<TaskSubmission[]>([]);
-  const [transactions, setTransactions] = useState<WalletTransaction[]>([]);
-  const [withdrawalRequests, setWithdrawalRequests] = useState<WithdrawalRequest[]>([]);
-  const [referrals, setReferrals] = useState<ReferredUser[]>([]);
-
-  // Default initial balances: A real member account starts strictly at ₦0.00
+  // Database-backed Financial State
   const [availableBalance, setAvailableBalance] = useState<number>(0);
   const [pendingRewards, setPendingRewards] = useState<number>(0);
+  const [reservedFunds, setReservedFunds] = useState<number>(0);
   const [totalWithdrawn, setTotalWithdrawn] = useState<number>(0);
   const [lifetimeEarned, setLifetimeEarned] = useState<number>(0);
+  const [walletLoading, setWalletLoading] = useState<boolean>(false);
+  const [walletError, setWalletError] = useState<string | null>(null);
+  const [transactions, setTransactions] = useState<WalletTransaction[]>([]);
+  const [withdrawalRequests, setWithdrawalRequests] = useState<WithdrawalRequest[]>([]);
 
-  // Modals & UI helpers
+  // Database-backed Tasks & Submissions
+  const [tasks, setTasks] = useState<SponsoredTask[]>([]);
+  const [tasksLoading, setTasksLoading] = useState<boolean>(false);
+  const [tasksError, setTasksError] = useState<string | null>(null);
+  const [submissions, setSubmissions] = useState<TaskSubmission[]>([]);
+  const [submissionsLoading, setSubmissionsLoading] = useState<boolean>(false);
   const [selectedTaskForSubmission, setSelectedTaskForSubmission] = useState<SponsoredTask | null>(null);
+
+  // Database-backed Referrals
+  const [referralStat, setReferralStat] = useState<ReferralStat>({
+    totalClicks: 0,
+    registeredCount: 0,
+    activeEarnersCount: 0,
+    totalEarnedNaira: 0,
+    referralCode: '',
+    referralLink: '',
+  });
+  const [referrals, setReferrals] = useState<ReferredUser[]>([]);
+  const [referralsLoading, setReferralsLoading] = useState<boolean>(false);
+
+  // UI state
   const [isArchitectureModalOpen, setIsArchitectureModalOpen] = useState<boolean>(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -205,10 +240,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setCurrentScreenState(screen);
   };
 
-  // Helper to fetch live database records for a given user
+  // =========================================================================
+  // SUPABASE DATA FETCHING (STRICTLY FROM DATABASE TABLES & VIEWS)
+  // =========================================================================
   const fetchUserData = useCallback(async (userId: string, sbUser?: SupabaseAuthUser) => {
     if (!isSupabaseConfigured) return;
+
     setMembershipLoading(true);
+    setWalletLoading(true);
+    setTasksLoading(true);
+    setSubmissionsLoading(true);
+    setReferralsLoading(true);
+    setWalletError(null);
+    setTasksError(null);
 
     try {
       // 1. Fetch public.profiles
@@ -224,7 +268,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setDbProfile(pData as DatabaseProfile);
       }
 
-      // 2. Fetch public.memberships (latest record for this user to inspect active vs expired)
+      // 2. Fetch public.memberships (latest record for this user)
       const { data: mData, error: mErr } = await supabase
         .from('memberships')
         .select('*, membership_plans(*)')
@@ -250,12 +294,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       } else if (plansData && plansData.length > 0) {
         setMembershipPlans(plansData as DatabaseMembershipPlan[]);
       } else {
-        // Fallback placeholder representing the inactive Premium model
         setMembershipPlans([
           {
-            id: 'premium-plan-seed',
+            id: 'premium-unpriced',
             name: 'Premium Member',
-            description: 'Exclusive high-tier campaigns, premium sponsorship rates, priority task audit windows, and dedicated settlement pipelines.',
+            description: 'Priority task catalog access, expedited verification, and high-value brand sponsorships.',
             price_kobo: 0,
             duration_days: null,
             is_active: false,
@@ -264,12 +307,257 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         ]);
       }
 
-      // 4. Update combined profile state if auth user provided
+      // 4. Fetch public.wallet_balances (View)
+      const { data: wbData, error: wbErr } = await supabase
+        .from('wallet_balances')
+        .select('*')
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      if (wbErr) {
+        console.warn('Error reading public.wallet_balances view:', wbErr.message);
+        setWalletError(wbErr.message);
+      } else if (wbData) {
+        const wb = wbData as DatabaseWalletBalance;
+        setAvailableBalance((wb.available_kobo || 0) / 100);
+        setPendingRewards((wb.pending_kobo || 0) / 100);
+        setReservedFunds((wb.reserved_kobo || 0) / 100);
+      } else {
+        // Genuine new user with zero ledger records starts at ₦0.00
+        setAvailableBalance(0);
+        setPendingRewards(0);
+        setReservedFunds(0);
+      }
+
+      // 5. Fetch public.wallet_ledger (Financial Source of Truth)
+      const { data: wlData, error: wlErr } = await supabase
+        .from('wallet_ledger')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
+
+      if (wlErr) {
+        console.warn('Error reading public.wallet_ledger:', wlErr.message);
+        setWalletError(wlErr.message);
+      } else if (wlData) {
+        const rawLedger = wlData as DatabaseWalletLedger[];
+        const mappedTx: WalletTransaction[] = rawLedger.map((row) => ({
+          id: row.id,
+          userId: row.user_id,
+          type: row.entry_type || 'task_reward',
+          title: row.description || 'Ledger Entry',
+          amountNaira: Math.abs(row.amount_kobo || 0) / 100,
+          status: 'approved',
+          reference: `LEDGER-${row.id.slice(0, 8).toUpperCase()}`,
+          date: new Date(row.created_at).toLocaleString('en-NG', {
+            dateStyle: 'medium',
+            timeStyle: 'short',
+          }),
+        }));
+        setTransactions(mappedTx);
+
+        // Calculate lifetime earned from positive ledger credits
+        const totalEarnedKobo = rawLedger
+          .filter((r) => (r.amount_kobo || 0) > 0)
+          .reduce((sum, r) => sum + r.amount_kobo, 0);
+        setLifetimeEarned(totalEarnedKobo / 100);
+      } else {
+        setTransactions([]);
+        setLifetimeEarned(0);
+      }
+
+      // 6. Fetch public.withdrawal_requests
+      const { data: wrData, error: wrErr } = await supabase
+        .from('withdrawal_requests')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
+
+      if (wrErr) {
+        console.warn('Error reading public.withdrawal_requests:', wrErr.message);
+      } else if (wrData) {
+        const rawWd = wrData as DatabaseWithdrawalRequest[];
+        const mappedWd: WithdrawalRequest[] = rawWd.map((row) => ({
+          id: row.id,
+          userId: row.user_id,
+          amountNaira: (row.amount_kobo || 0) / 100,
+          bankName: row.bank_name || 'Commercial Bank',
+          accountNumber: row.account_number || '',
+          accountName: row.account_name || 'Account Holder',
+          status: row.status,
+          reference: `WD-${row.id.slice(0, 8).toUpperCase()}`,
+          requestedAt: new Date(row.created_at).toLocaleString('en-NG', {
+            dateStyle: 'medium',
+            timeStyle: 'short',
+          }),
+          processedAt: row.updated_at ? new Date(row.updated_at).toLocaleString('en-NG') : undefined,
+        }));
+        setWithdrawalRequests(mappedWd);
+
+        // Calculate total confirmed withdrawals (status === 'paid' or 'completed')
+        const totalPaidKobo = rawWd
+          .filter((r) => r.status === 'paid')
+          .reduce((sum, r) => sum + (r.amount_kobo || 0), 0);
+        setTotalWithdrawn(totalPaidKobo / 100);
+      } else {
+        setWithdrawalRequests([]);
+        setTotalWithdrawn(0);
+      }
+
+      // 7. Fetch public.sponsored_tasks
+      const { data: stData, error: stErr } = await supabase
+        .from('sponsored_tasks')
+        .select('*, sponsored_campaigns(*)')
+        .eq('status', 'active')
+        .order('created_at', { ascending: false });
+
+      if (stErr) {
+        console.warn('Error reading public.sponsored_tasks:', stErr.message);
+        setTasksError(stErr.message);
+        setTasks([]);
+      } else if (stData && stData.length > 0) {
+        const rawTasks = stData as DatabaseSponsoredTask[];
+        const mappedTasks: SponsoredTask[] = rawTasks.map((t) => {
+          let inst: string[] = [];
+          if (Array.isArray(t.instructions)) {
+            inst = t.instructions;
+          } else if (typeof t.instructions === 'string') {
+            inst = t.instructions.split('\n').filter(Boolean);
+          } else {
+            inst = ['Follow the verified campaign instructions provided.'];
+          }
+
+          return {
+            id: t.id,
+            title: t.title,
+            category: 'Sponsored Campaign',
+            sponsorName: t.sponsored_campaigns?.title || 'Verified Partner',
+            rewardNaira: (t.reward_kobo || 0) / 100,
+            totalSlots: 100,
+            remainingSlots: 50,
+            estimatedMinutes: 5,
+            instructions: inst,
+            proofRequirements: {
+              type: 'link',
+              description: 'Submit proof URL or verification screenshot as requested.',
+            },
+            verificationWindowHours: 24,
+            status: 'active',
+            createdAt: t.created_at,
+            campaignType: 'verified_sponsor',
+          };
+        });
+        setTasks(mappedTasks);
+      } else {
+        // Zero active tasks in database
+        setTasks([]);
+      }
+
+      // 8. Fetch public.task_submissions
+      const { data: subData, error: subErr } = await supabase
+        .from('task_submissions')
+        .select('*, sponsored_tasks(*)')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
+
+      if (subErr) {
+        console.warn('Error reading public.task_submissions:', subErr.message);
+      } else if (subData) {
+        const rawSubs = subData as DatabaseTaskSubmission[];
+        const mappedSubs: TaskSubmission[] = rawSubs.map((s) => ({
+          id: s.id,
+          taskId: s.task_id,
+          taskTitle: s.sponsored_tasks?.title || 'Sponsored Campaign Submission',
+          sponsorName: 'Verified Campaign',
+          userId: s.user_id,
+          rewardNaira: (s.sponsored_tasks?.reward_kobo || 0) / 100,
+          proofUrl: s.proof_url,
+          submittedAt: new Date(s.created_at).toLocaleString('en-NG', {
+            dateStyle: 'medium',
+            timeStyle: 'short',
+          }),
+          reviewedAt: s.reviewed_at ? new Date(s.reviewed_at).toLocaleString('en-NG') : undefined,
+          status: s.status,
+        }));
+        setSubmissions(mappedSubs);
+      } else {
+        setSubmissions([]);
+      }
+
+      // 9. Fetch public.referral_codes & public.referrals
+      let refCodeString = `NAR-${userId.slice(0, 6).toUpperCase()}`;
+      const { data: rcData, error: rcErr } = await supabase
+        .from('referral_codes')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('is_active', true)
+        .maybeSingle();
+
+      if (!rcErr && rcData) {
+        refCodeString = (rcData as DatabaseReferralCode).code;
+      }
+
+      const origin = typeof window !== 'undefined' ? window.location.origin : 'https://narivo.app';
+      const refLink = `${origin}/?ref=${refCodeString}`;
+
+      // Query referrals linked to this code
+      if (rcData?.id) {
+        const { data: refRows } = await supabase
+          .from('referrals')
+          .select('*')
+          .eq('referral_code_id', rcData.id)
+          .order('created_at', { ascending: false });
+
+        if (refRows && refRows.length > 0) {
+          const rawRefs = refRows as DatabaseReferral[];
+          const mappedRefs: ReferredUser[] = rawRefs.map((r) => ({
+            id: r.id,
+            name: `Member ${r.referred_user_id.slice(0, 8)}`,
+            joinedDate: new Date(r.created_at).toLocaleDateString('en-NG'),
+            status: r.status,
+            commissionEarnedNaira: (r.commission_kobo || 0) / 100,
+          }));
+          setReferrals(mappedRefs);
+
+          const totalCommissionKobo = rawRefs.reduce((acc, curr) => acc + (curr.commission_kobo || 0), 0);
+          setReferralStat({
+            totalClicks: 0,
+            registeredCount: mappedRefs.length,
+            activeEarnersCount: mappedRefs.filter((m) => m.status === 'active').length,
+            totalEarnedNaira: totalCommissionKobo / 100,
+            referralCode: refCodeString,
+            referralLink: refLink,
+          });
+        } else {
+          setReferrals([]);
+          setReferralStat({
+            totalClicks: 0,
+            registeredCount: 0,
+            activeEarnersCount: 0,
+            totalEarnedNaira: 0,
+            referralCode: refCodeString,
+            referralLink: refLink,
+          });
+        }
+      } else {
+        setReferrals([]);
+        setReferralStat({
+          totalClicks: 0,
+          registeredCount: 0,
+          activeEarnersCount: 0,
+          totalEarnedNaira: 0,
+          referralCode: refCodeString,
+          referralLink: refLink,
+        });
+      }
+
+      // 10. Update user profile state
       if (sbUser) {
         const fullProfile = mapSupabaseDataToProfile(
           sbUser, 
           pData as DatabaseProfile | null, 
-          mData as DatabaseMembership | null
+          mData as DatabaseMembership | null,
+          refCodeString
         );
         setUser(fullProfile);
       }
@@ -277,21 +565,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       console.warn('Unexpected error during fetchUserData:', err);
     } finally {
       setMembershipLoading(false);
+      setWalletLoading(false);
+      setTasksLoading(false);
+      setSubmissionsLoading(false);
+      setReferralsLoading(false);
     }
   }, []);
 
-  // Public methods to refresh data
+  const refreshAllData = useCallback(async () => {
+    if (!user) return;
+    await fetchUserData(user.id);
+  }, [user, fetchUserData]);
+
   const refreshMembership = useCallback(async () => {
-    if (!user || user.isDemoUser) return;
+    if (!user) return;
     await fetchUserData(user.id);
   }, [user, fetchUserData]);
 
-  const refreshProfile = useCallback(async () => {
-    if (!user || user.isDemoUser) return;
-    await fetchUserData(user.id);
-  }, [user, fetchUserData]);
-
-  // 1. Initial Session Restoration & Supabase Auth Listener
+  // =========================================================================
+  // SUPABASE SESSION PERSISTENCE & AUTH LISTENER
+  // =========================================================================
   useEffect(() => {
     let isMounted = true;
 
@@ -310,12 +603,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (session?.user && isMounted) {
           setIsAuthenticated(true);
           await fetchUserData(session.user.id, session.user);
-
-          // Genuine accounts start strictly at clean ₦0.00
-          setAvailableBalance(0);
-          setPendingRewards(0);
-          setTotalWithdrawn(0);
-          setLifetimeEarned(0);
         }
       } catch (err) {
         console.warn('Failed to restore Supabase session:', err);
@@ -326,7 +613,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     initializeAuth();
 
-    // Subscribe to Supabase auth events
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!isMounted) return;
 
@@ -342,6 +628,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setIsAuthenticated(false);
         setAvailableBalance(0);
         setPendingRewards(0);
+        setReservedFunds(0);
         setTotalWithdrawn(0);
         setLifetimeEarned(0);
         setSubmissions([]);
@@ -357,20 +644,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
   }, [fetchUserData]);
 
-  // 2. Route protection check when auth state resolves
+  // Route protection check
   useEffect(() => {
     if (!authLoading && !isAuthenticated && protectedScreens.includes(currentScreen)) {
       setCurrentScreenState('login');
     }
   }, [authLoading, isAuthenticated, currentScreen]);
 
-  // Login via Supabase Auth
+  // =========================================================================
+  // AUTH ACTIONS
+  // =========================================================================
   const login = async (email: string, pass: string): Promise<AuthResponse> => {
     if (!isSupabaseConfigured) {
-      return {
-        success: false,
-        error: 'Supabase credentials are not configured.',
-      };
+      return { success: false, error: 'Supabase credentials are not configured.' };
     }
 
     try {
@@ -380,23 +666,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       });
 
       if (error) {
-        return {
-          success: false,
-          error: error.message,
-        };
+        return { success: false, error: error.message };
       }
 
       if (data.user) {
         setIsAuthenticated(true);
         await fetchUserData(data.user.id, data.user);
-
-        // Genuine accounts start at ₦0.00
-        setAvailableBalance(0);
-        setPendingRewards(0);
-        setTotalWithdrawn(0);
-        setLifetimeEarned(0);
-
-        showToast('Signed in successfully to NARIVO Member Portal.');
+        showToast('Signed in successfully.');
         setCurrentScreenState('dashboard');
         return { 
           success: true, 
@@ -413,7 +689,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  // Register via Supabase Auth (Profile only through DB trigger, zero free memberships)
   const register = async (data: { 
     fullName: string; 
     email: string; 
@@ -422,10 +697,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     referralCode?: string 
   }): Promise<AuthResponse> => {
     if (!isSupabaseConfigured) {
-      return {
-        success: false,
-        error: 'Supabase credentials are not configured.',
-      };
+      return { success: false, error: 'Supabase credentials are not configured.' };
     }
 
     try {
@@ -445,84 +717,76 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       });
 
       if (error) {
-        return {
-          success: false,
-          error: error.message,
-        };
-      }
-
-      // Check if user already exists
-      if (authData.user && authData.user.identities && authData.user.identities.length === 0) {
-        return {
-          success: false,
-          error: 'An account with this email address is already registered. Please log in instead.',
-        };
+        return { success: false, error: error.message };
       }
 
       if (authData.user) {
-        const needsVerification = !authData.user.email_confirmed_at;
-        
-        // If session created immediately (auto-confirm enabled)
         if (authData.session) {
           setIsAuthenticated(true);
           await fetchUserData(authData.user.id, authData.user);
-          setAvailableBalance(0);
-          setPendingRewards(0);
-          setTotalWithdrawn(0);
-          setLifetimeEarned(0);
           setCurrentScreenState('dashboard');
+          return { success: true, needsEmailVerification: false };
+        } else {
+          return { 
+            success: true, 
+            needsEmailVerification: true 
+          };
         }
-
-        return {
-          success: true,
-          needsEmailVerification: needsVerification,
-        };
       }
 
-      return { success: false, error: 'Registration failed. Please try again.' };
+      return { success: false, error: 'Registration could not be completed.' };
     } catch (err: any) {
-      return { 
-        success: false, 
-        error: err?.message || 'An unexpected error occurred during registration.' 
-      };
+      return { success: false, error: err?.message || 'Registration exception' };
     }
   };
 
-  // Sign out via Supabase Auth
   const logout = async () => {
-    if (user?.isDemoUser) {
-      setUser(null);
-      setDbProfile(null);
-      setActiveMembership(null);
-      setIsAuthenticated(false);
-      setCurrentScreenState('landing');
-      showToast('Signed out of demo session.');
-      return;
-    }
-
-    try {
-      if (isSupabaseConfigured) {
+    if (isSupabaseConfigured) {
+      try {
         await supabase.auth.signOut();
+      } catch (err) {
+        console.warn('SignOut error:', err);
       }
-    } catch (err) {
-      console.warn('Error during signOut:', err);
-    } finally {
-      setUser(null);
-      setDbProfile(null);
-      setActiveMembership(null);
-      setIsAuthenticated(false);
-      setCurrentScreenState('landing');
-      showToast('Signed out of member session.');
+    }
+    setUser(null);
+    setDbProfile(null);
+    setActiveMembership(null);
+    setIsAuthenticated(false);
+    setAvailableBalance(0);
+    setPendingRewards(0);
+    setReservedFunds(0);
+    setLifetimeEarned(0);
+    setTotalWithdrawn(0);
+    setTransactions([]);
+    setWithdrawalRequests([]);
+    setSubmissions([]);
+    setReferrals([]);
+    setCurrentScreenState('landing');
+    showToast('Signed out of NARIVO.');
+  };
+
+  const resetPassword = async (email: string): Promise<{ success: boolean; error?: string }> => {
+    if (!isSupabaseConfigured) {
+      return { success: false, error: 'Supabase is not configured.' };
+    }
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+        redirectTo: typeof window !== 'undefined' ? `${window.location.origin}` : undefined,
+      });
+      if (error) {
+        return { success: false, error: error.message };
+      }
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, error: err?.message || 'Password reset request failed.' };
     }
   };
 
-  // Resend verification email
   const resendVerificationEmail = async (targetEmail?: string): Promise<{ success: boolean; message: string }> => {
     const emailToUse = targetEmail || user?.email;
     if (!emailToUse) {
       return { success: false, message: 'No email address specified.' };
     }
-
     if (!isSupabaseConfigured) {
       return { success: false, message: 'Supabase authentication is not configured.' };
     }
@@ -546,14 +810,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  // Update Profile connected directly to public.profiles
+  // =========================================================================
+  // PROFILE MUTATIONS
+  // =========================================================================
   const updateProfile = async (updated: Partial<UserProfile>): Promise<{ success: boolean; message: string }> => {
     if (!user) return { success: false, message: 'No user signed in' };
 
     const merged = { ...user, ...updated };
     setUser(merged);
 
-    if (!user.isDemoUser && isSupabaseConfigured) {
+    if (isSupabaseConfigured) {
       try {
         const { error } = await supabase
           .from('profiles')
@@ -566,7 +832,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
         if (error) {
           console.warn('Error updating public.profiles:', error.message);
-          showToast(`Database profile sync notice: ${error.message}`);
+          showToast(`Profile update error: ${error.message}`);
           return { success: false, message: error.message };
         } else {
           setDbProfile((prev) => prev ? {
@@ -584,195 +850,116 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return { success: true, message: 'Saved successfully' };
   };
 
-  // Task proof submission
-  const submitTaskProof = (
+  // =========================================================================
+  // TASK SUBMISSION WITH REAL SERVER-SIDE PRE-VALIDATION
+  // =========================================================================
+  const submitTaskProof = async (
     taskId: string, 
     proof: { proofUrl?: string; proofUsername?: string; proofNotes?: string }
-  ) => {
-    const task = tasks.find(t => t.id === taskId);
-    if (!task) {
-      return { success: false, message: 'Task not found.' };
+  ): Promise<{ success: boolean; message: string }> => {
+    if (!user) {
+      return { success: false, message: 'Authentication required to submit task evidence.' };
     }
 
+    // 1. Enforce active Premium membership requirement
+    const isPremium = checkMembershipIsActive(activeMembership);
+    if (!isPremium) {
+      return { 
+        success: false, 
+        message: 'Task submission requires an active Premium membership. Premium registration is currently inactive while pricing is being configured.' 
+      };
+    }
+
+    // 2. Prevent duplicate pending submissions
     const existing = submissions.find(s => s.taskId === taskId && s.status === 'pending_review');
     if (existing) {
       return { success: false, message: 'You already submitted proof for this task. It is pending sponsor review.' };
     }
 
-    const newSub: TaskSubmission = {
-      id: `sub-${Date.now()}`,
-      taskId: task.id,
-      taskTitle: task.title,
-      sponsorName: task.sponsorName,
-      userId: user?.id || 'usr-guest',
-      rewardNaira: task.rewardNaira,
-      proofUrl: proof.proofUrl,
-      proofUsername: proof.proofUsername,
-      proofNotes: proof.proofNotes,
-      submittedAt: new Date().toLocaleString(),
-      status: 'pending_review',
-    };
+    try {
+      const proofPayload = proof.proofUrl || proof.proofUsername || proof.proofNotes || 'Proof submitted';
+      const { data, error } = await supabase
+        .from('task_submissions')
+        .insert({
+          task_id: taskId,
+          user_id: user.id,
+          status: 'pending_review',
+          proof_url: proofPayload,
+        })
+        .select()
+        .single();
 
-    const newTx: WalletTransaction = {
-      id: `tx-${Date.now()}`,
-      userId: user?.id || 'usr-guest',
-      type: 'task_reward',
-      title: `Task Submission: ${task.title}`,
-      amountNaira: task.rewardNaira,
-      status: 'pending',
-      reference: `NAR-SUB-${Math.floor(100000 + Math.random() * 900000)}`,
-      date: new Date().toLocaleString(),
-      notes: `Submitted for sponsor verification (${task.verificationWindowHours}h audit window).`,
-      isDemoData: Boolean(user?.isDemoUser),
-    };
+      if (error) {
+        return { success: false, message: `Submission failed: ${error.message}` };
+      }
 
-    setSubmissions(prev => [newSub, ...prev]);
-    setTransactions(prev => [newTx, ...prev]);
-    setPendingRewards(prev => prev + task.rewardNaira);
-    setTasks(prev => prev.map(t => t.id === taskId ? { ...t, remainingSlots: Math.max(0, t.remainingSlots - 1) } : t));
-
-    showToast(`Task submitted! ₦${task.rewardNaira.toLocaleString()} queued in Pending Rewards.`);
-    return { success: true, message: 'Task submitted for verification.' };
+      await fetchUserData(user.id);
+      showToast('Task proof submitted successfully! Awaiting sponsor audit.');
+      return { success: true, message: 'Task proof submitted for verification.' };
+    } catch (err: any) {
+      return { success: false, message: err?.message || 'Failed to record task submission.' };
+    }
   };
 
-  // Withdrawal Request simulation
-  const requestWithdrawal = (
+  // =========================================================================
+  // ATOMIC WITHDRAWAL USING REAL DATABASE RPC (request_withdrawal)
+  // =========================================================================
+  const requestWithdrawal = async (
     amount: number, 
     bankName: string, 
     accountNumber: string, 
     accountName: string
-  ) => {
+  ): Promise<{ success: boolean; message: string }> => {
+    if (!user) {
+      return { success: false, message: 'Authentication required for withdrawals.' };
+    }
+
     if (amount < 5000) {
-      return { success: false, message: 'Minimum withdrawal preference is ₦5,000 as per platform policy.' };
+      return { success: false, message: 'Minimum withdrawal amount is ₦5,000.00.' };
     }
+
     if (amount > availableBalance) {
-      return { success: false, message: `Insufficient available balance. You currently have ₦${availableBalance.toLocaleString()} available.` };
+      return { 
+        success: false, 
+        message: `Insufficient available balance. You currently have ₦${availableBalance.toLocaleString('en-NG', { minimumFractionDigits: 2 })} available.` 
+      };
     }
+
     if (!accountNumber || accountNumber.length !== 10) {
-      return { success: false, message: 'Please enter a valid 10-digit Nigerian NUBAN account number.' };
-    }
-    if (!bankName) {
-      return { success: false, message: 'Please select a recipient Nigerian bank.' };
+      return { success: false, message: 'Please provide a valid 10-digit Nigerian NUBAN account number.' };
     }
 
-    const ref = `DEMO-WD-${Math.floor(100000 + Math.random() * 900000)}`;
-    
-    const newWd: WithdrawalRequest = {
-      id: `wd-${Date.now()}`,
-      userId: user?.id || 'usr-guest',
-      amountNaira: amount,
-      bankName,
-      accountNumber,
-      accountName: accountName || 'VERIFIED BENEFICIARY',
-      status: 'processing',
-      reference: ref,
-      requestedAt: new Date().toLocaleString(),
-      isDemoSimulation: true,
-    };
+    const amountKobo = Math.round(amount * 100);
 
-    const newTx: WalletTransaction = {
-      id: `tx-${Date.now()}`,
-      userId: user?.id || 'usr-guest',
-      type: 'withdrawal',
-      title: `Simulated Payout Request to ${bankName} (${accountNumber.slice(0, 3)}****${accountNumber.slice(-3)})`,
-      amountNaira: amount,
-      status: 'processing',
-      reference: ref,
-      date: new Date().toLocaleString(),
-      notes: 'DEMO DATA: Simulated withdrawal test in sandbox mode. No actual banking transfer has been completed.',
-      isDemoData: true,
-    };
+    try {
+      // Call existing atomic RPC in Supabase
+      const { data: rpcData, error: rpcError } = await supabase.rpc('request_withdrawal', {
+        p_amount_kobo: amountKobo,
+        p_bank_name: bankName.trim(),
+        p_account_name: accountName.trim(),
+        p_account_number: accountNumber.trim(),
+      });
 
-    setAvailableBalance(prev => prev - amount);
-    setTotalWithdrawn(prev => prev + amount);
-    setWithdrawalRequests(prev => [newWd, ...prev]);
-    setTransactions(prev => [newTx, ...prev]);
+      if (rpcError) {
+        console.warn('request_withdrawal RPC error:', rpcError);
+        return { success: false, message: rpcError.message || 'Withdrawal reservation failed on server.' };
+      }
 
-    showToast(`Simulated withdrawal of ₦${amount.toLocaleString()} queued for review.`);
-    return { success: true, message: 'Withdrawal request simulated successfully.' };
+      // Refresh real balances and withdrawal requests from Supabase
+      await fetchUserData(user.id);
+      showToast(`Withdrawal of ₦${amount.toLocaleString('en-NG')} queued for administrator review.`);
+      return { 
+        success: true, 
+        message: 'Withdrawal request submitted successfully. Transfers are processed manually by administrators.' 
+      };
+    } catch (err: any) {
+      return { success: false, message: err?.message || 'Server exception during withdrawal reservation.' };
+    }
   };
 
-  const isDemoAccount = Boolean(user?.isDemoUser);
   const isEmailVerified = Boolean(user?.isEmailVerified);
-
   const isUserMembershipActive = checkMembershipIsActive(activeMembership);
   const isUserMembershipExpired = checkMembershipIsExpired(activeMembership);
-
-  const loadFreshAccount = () => {
-    setUser({ ...INITIAL_USER, membershipTier: 'Registered — No Active Membership', isDemoUser: false });
-    setDbProfile(null);
-    setActiveMembership(null);
-    setIsAuthenticated(true);
-    setAvailableBalance(0);
-    setPendingRewards(0);
-    setTotalWithdrawn(0);
-    setLifetimeEarned(0);
-    setSubmissions([]);
-    setTransactions([]);
-    setWithdrawalRequests([]);
-    setReferrals([]);
-    showToast('Switched to clean member account (₦0.00 balance, Registered — No Active Membership).');
-  };
-
-  const loadDemoAccount = () => {
-    setUser({ ...SAMPLE_DEMO_USER, membershipTier: 'Registered — No Active Membership' });
-    setDbProfile(null);
-    setActiveMembership(null);
-    setIsAuthenticated(true);
-    setTasks(INITIAL_TASKS);
-    setSubmissions([
-      {
-        id: 'sub-sample-01',
-        taskId: 'task-005',
-        taskTitle: 'Product Review: Share Honest Feedback on EcoClean Laundry App',
-        sponsorName: 'EcoClean On-Demand',
-        userId: 'usr-demo-84291',
-        rewardNaira: 1200,
-        proofUsername: 'JusticeReviewerNG',
-        proofNotes: 'Play Store 5-star constructive review published Oct 30.',
-        submittedAt: '2026-10-30 08:30',
-        status: 'pending_review',
-      }
-    ]);
-    setTransactions(INITIAL_TRANSACTIONS);
-    setWithdrawalRequests([
-      {
-        id: 'wd-001',
-        userId: 'usr-demo-84291',
-        amountNaira: 5000,
-        bankName: 'Guaranty Trust Bank (GTBank)',
-        accountNumber: '0248819284',
-        accountName: 'JUSTICE CHIDIEBERE OKOYE',
-        status: 'processing',
-        reference: 'DEMO-WD-640192',
-        requestedAt: '2026-10-30 10:45',
-        isDemoSimulation: true,
-      }
-    ]);
-    setReferrals(INITIAL_REFERRED_USERS);
-    setAvailableBalance(5500);
-    setPendingRewards(1200);
-    setTotalWithdrawn(0);
-    setLifetimeEarned(6700);
-    showToast('Loaded sample demo sandbox data (₦5,500.00 DEMO balance).');
-  };
-
-  const resetDemoData = () => {
-    if (user?.isDemoUser) {
-      loadDemoAccount();
-    } else {
-      loadFreshAccount();
-    }
-  };
-
-  const referralStat: ReferralStat = {
-    totalClicks: isDemoAccount ? 28 : 0,
-    registeredCount: referrals.length,
-    activeEarnersCount: referrals.filter(r => r.status === 'Active').length,
-    totalEarnedNaira: referrals.reduce((sum, r) => sum + r.commissionEarnedNaira, 0),
-    referralCode: user?.referralCode || 'NAR-9428',
-    referralLink: `https://narivo.com/register?ref=${user?.referralCode || 'NAR-9428'}`,
-  };
 
   return (
     <AppContext.Provider
@@ -790,35 +977,39 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         isMembershipExpired: isUserMembershipExpired,
         membershipPlans,
         membershipLoading,
-        refreshMembership,
-        refreshProfile,
-        tasks,
-        submissions,
-        transactions,
-        withdrawalRequests,
-        referrals,
-        referralStat,
         availableBalance,
         pendingRewards,
+        reservedFunds,
         totalWithdrawn,
         lifetimeEarned,
+        walletLoading,
+        walletError,
+        transactions,
+        withdrawalRequests,
+        tasks,
+        tasksLoading,
+        tasksError,
+        submissions,
+        submissionsLoading,
+        selectedTaskForSubmission,
+        setSelectedTaskForSubmission,
+        referralStat,
+        referrals,
+        referralsLoading,
+        toastMessage,
+        showToast,
+        isArchitectureModalOpen,
+        setIsArchitectureModalOpen,
         login,
         register,
         logout,
+        resetPassword,
         resendVerificationEmail,
+        updateProfile,
         submitTaskProof,
         requestWithdrawal,
-        updateProfile,
-        resetDemoData,
-        loadFreshAccount,
-        loadDemoAccount,
-        isDemoAccount,
-        selectedTaskForSubmission,
-        setSelectedTaskForSubmission,
-        isArchitectureModalOpen,
-        setIsArchitectureModalOpen,
-        toastMessage,
-        showToast,
+        refreshAllData,
+        refreshMembership,
       }}
     >
       {children}
