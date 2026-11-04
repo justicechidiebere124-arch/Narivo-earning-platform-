@@ -6,15 +6,13 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { usePageSeo } from '../../hooks/usePageSeo';
-import { Card, Input, Button, Modal, Badge } from '../ui';
+import { Input, Modal } from '../ui';
 import { 
   Lock, 
   Mail, 
   ArrowRight, 
   AlertCircle, 
-  ArrowLeft, 
   CheckCircle2,
-  ShieldCheck,
   Send
 } from 'lucide-react';
 
@@ -31,13 +29,13 @@ export const LoginPage: React.FC = () => {
   const [resetSubmitting, setResetSubmitting] = useState(false);
   const [resetStatus, setResetStatus] = useState<{ success: boolean; message: string } | null>(null);
 
-  // Email verification resend state
+  // Email verification resend prompt state
   const [showResendPrompt, setShowResendPrompt] = useState(false);
   const [isResending, setIsResending] = useState(false);
 
   usePageSeo({
     title: 'Sign In – NARIVO',
-    description: 'Sign in to access your NARIVO verified member dashboard, sponsored tasks and digital wallet.',
+    description: 'Sign in to access your NARIVO account.',
     canonicalPath: '/login',
   });
 
@@ -118,52 +116,73 @@ export const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="max-w-md mx-auto px-4 py-8 sm:py-14 space-y-6">
-      {/* Back to Home Link */}
-      <div>
-        <button
-          onClick={() => setCurrentScreen('landing')}
-          className="inline-flex items-center gap-2 text-xs font-semibold text-slate-400 hover:text-white transition-colors cursor-pointer"
-        >
-          <ArrowLeft className="w-4 h-4 text-emerald-400" />
-          <span>Back to Overview</span>
-        </button>
-      </div>
+    <div className="relative min-h-screen flex flex-col items-center justify-center px-4 sm:px-6 py-8 sm:py-12 bg-[radial-gradient(ellipse_130%_90%_at_50%_-15%,#065f46_0%,#044e39_25%,#033a2b_50%,#022c22_75%,#011f18_100%)] selection:bg-emerald-400 selection:text-slate-950">
+      
+      {/* 1. Emerald Ambient Illumination */}
+      <div 
+        className="anim-ambient-1 absolute top-0 left-1/2 -translate-x-1/2 w-[720px] sm:w-[900px] h-[400px] bg-[radial-gradient(circle,rgba(52,211,153,0.25)_0%,rgba(16,185,129,0.12)_45%,transparent_75%)] blur-3xl pointer-events-none -z-10" 
+        aria-hidden="true" 
+      />
+      <div 
+        className="anim-ambient-2 absolute top-1/4 -right-20 w-80 h-80 bg-emerald-400/15 rounded-full blur-3xl pointer-events-none -z-10" 
+        aria-hidden="true" 
+      />
+      <div 
+        className="anim-ambient-3 absolute bottom-10 -left-20 w-96 h-96 bg-teal-500/15 rounded-full blur-3xl pointer-events-none -z-10" 
+        aria-hidden="true" 
+      />
 
-      {/* Main Login Card */}
-      <Card variant="elevated" className="p-6 sm:p-8 space-y-6">
-        <div className="space-y-2 text-center sm:text-left">
-          <div className="flex items-center justify-between">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-800 text-white font-black text-lg flex items-center justify-center shadow-md">
+      {/* Subtle glass contour grid */}
+      <div 
+        className="absolute inset-0 bg-[linear-gradient(to_right,rgba(52,211,153,0.05)_1px,transparent_1px),linear-gradient(to_bottom,rgba(52,211,153,0.05)_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_70%_60%_at_50%_45%,#000_65%,transparent_100%)] pointer-events-none -z-10"
+        aria-hidden="true"
+      />
+
+      {/* 2. Glassmorphic Sign-In Container */}
+      <div className="relative w-full max-w-[420px] rounded-3xl sm:rounded-[32px] bg-[#064e3b]/55 backdrop-blur-2xl border border-emerald-400/30 shadow-[0_24px_60px_rgba(1,26,20,0.85),inset_0_1px_1px_rgba(255,255,255,0.25),inset_0_0_30px_rgba(16,185,129,0.08)] p-6 sm:p-9 space-y-6 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+        
+        {/* Top specular sheen */}
+        <div 
+          className="absolute top-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-transparent via-emerald-200/60 to-transparent pointer-events-none" 
+          aria-hidden="true" 
+        />
+
+        {/* Brand Mark & Clear "Welcome Back" Heading */}
+        <div className="flex flex-col items-center text-center space-y-3">
+          <button
+            type="button"
+            onClick={() => setCurrentScreen('landing')}
+            className="inline-flex items-center gap-2.5 group focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 rounded-2xl p-1 cursor-pointer transition-transform active:scale-95"
+            title="Return to NARIVO Home"
+          >
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-400 via-emerald-500 to-teal-500 flex items-center justify-center text-slate-950 font-black text-xl shadow-[0_0_20px_rgba(52,211,153,0.5)] ring-1 ring-white/30 group-hover:scale-105 transition-transform">
               N
             </div>
-            <Badge variant="emerald" size="sm">
-              <ShieldCheck className="w-3 h-3" />
-              <span>Secure Session</span>
-            </Badge>
-          </div>
-          <h1 className="text-xl sm:text-2xl font-bold text-white font-heading pt-1">
-            Sign In to NARIVO
+            <span className="text-xl font-black tracking-[0.16em] text-white font-heading">
+              NARIVO
+            </span>
+          </button>
+
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight font-heading">
+            Welcome Back
           </h1>
-          <p className="text-xs text-slate-400">
-            Access your member dashboard, task opportunities, and Naira wallet.
-          </p>
         </div>
 
+        {/* Error Alert Box */}
         {error && (
-          <div className="p-3.5 bg-rose-500/10 rounded-xl border border-rose-500/30 text-xs text-rose-300 space-y-2">
+          <div className="p-3.5 bg-rose-500/15 rounded-xl border border-rose-500/35 text-xs text-rose-200 space-y-2">
             <div className="flex items-start gap-2">
-              <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
-              <span className="leading-relaxed">{error}</span>
+              <AlertCircle className="w-4 h-4 text-rose-300 shrink-0 mt-0.5" />
+              <span className="leading-relaxed font-medium">{error}</span>
             </div>
             {showResendPrompt && (
-              <div className="pt-2 border-t border-rose-500/20 flex items-center justify-between text-[11px]">
+              <div className="pt-2 border-t border-rose-500/25 flex items-center justify-between text-[11px]">
                 <span>Missing verification email?</span>
                 <button
                   type="button"
                   onClick={handleResend}
                   disabled={isResending}
-                  className="font-bold text-emerald-400 hover:text-emerald-300 underline cursor-pointer disabled:opacity-50"
+                  className="font-bold text-emerald-300 hover:text-emerald-200 underline cursor-pointer disabled:opacity-50"
                 >
                   {isResending ? 'Sending...' : 'Resend link now'}
                 </button>
@@ -172,6 +191,7 @@ export const LoginPage: React.FC = () => {
           </div>
         )}
 
+        {/* Essential Sign-In Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
           <Input
             label="Email Address"
@@ -180,13 +200,13 @@ export const LoginPage: React.FC = () => {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="name@domain.com"
-            leftIcon={<Mail className="w-4 h-4 text-slate-500" />}
+            leftIcon={<Mail className="w-4 h-4 text-emerald-300/70" />}
             autoComplete="email"
           />
 
-          <div className="space-y-1">
+          <div className="space-y-1.5">
             <div className="flex items-center justify-between">
-              <label className="text-xs font-semibold text-slate-300">
+              <label className="block text-xs font-semibold text-slate-200">
                 Password
               </label>
               <button
@@ -196,9 +216,9 @@ export const LoginPage: React.FC = () => {
                   setResetStatus(null);
                   setShowResetModal(true);
                 }}
-                className="text-[11px] font-medium text-emerald-400 hover:text-emerald-300 transition-colors cursor-pointer"
+                className="text-xs font-semibold text-emerald-300 hover:text-emerald-200 transition-colors cursor-pointer"
               >
-                Forgot password?
+                Forgot Password?
               </button>
             </div>
             <Input
@@ -207,53 +227,59 @@ export const LoginPage: React.FC = () => {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••••••"
-              leftIcon={<Lock className="w-4 h-4 text-slate-500" />}
+              leftIcon={<Lock className="w-4 h-4 text-emerald-300/70" />}
               autoComplete="current-password"
             />
           </div>
 
-          <Button
+          <button
             type="submit"
-            variant="primary"
-            size="lg"
-            isLoading={isSubmitting}
-            className="w-full"
-            rightIcon={<ArrowRight className="w-4 h-4" />}
+            disabled={isSubmitting}
+            className="w-full h-12 rounded-2xl bg-gradient-to-r from-emerald-400 via-emerald-500 to-teal-400 hover:from-emerald-300 hover:to-teal-300 text-slate-950 font-extrabold text-sm shadow-[0_10px_24px_rgba(16,185,129,0.35)] hover:shadow-[0_14px_30px_rgba(16,185,129,0.48)] active:scale-[0.99] transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed mt-2"
           >
-            {isSubmitting ? 'Authenticating...' : 'Sign In'}
-          </Button>
+            {isSubmitting ? (
+              <span>Signing In...</span>
+            ) : (
+              <>
+                <span>Sign In</span>
+                <ArrowRight className="w-4 h-4 text-slate-950" />
+              </>
+            )}
+          </button>
         </form>
 
-        <div className="pt-2 text-center text-xs text-slate-400 border-t border-white/[0.06]">
-          <span>New to NARIVO? </span>
+        {/* Small Register Link */}
+        <p className="text-xs text-slate-300 text-center pt-2">
+          Don't have an account?{' '}
           <button
+            type="button"
             onClick={() => setCurrentScreen('register')}
-            className="font-bold text-emerald-400 hover:text-emerald-300 transition-colors cursor-pointer ml-1"
+            className="font-bold text-emerald-300 hover:text-emerald-200 underline underline-offset-4 transition-colors cursor-pointer ml-1"
           >
-            Create free account
+            Register
           </button>
-        </div>
-      </Card>
+        </p>
+      </div>
 
-      {/* Real Password Reset Modal */}
+      {/* Forgot Password Modal */}
       <Modal
         isOpen={showResetModal}
         onClose={() => setShowResetModal(false)}
         title="Reset Your Password"
-        description="Enter your registered email address and we will send a secure password reset link."
+        description="Enter your registered email address to receive a secure reset link."
         size="sm"
       >
         <div className="space-y-4">
           {resetStatus && (
             <div className={`p-3 rounded-xl text-xs flex items-start gap-2 ${
               resetStatus.success 
-                ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-300' 
-                : 'bg-rose-500/10 border border-rose-500/30 text-rose-300'
+                ? 'bg-emerald-500/15 border border-emerald-500/30 text-emerald-200' 
+                : 'bg-rose-500/15 border border-rose-500/30 text-rose-200'
             }`}>
               {resetStatus.success ? (
-                <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5 text-emerald-400" />
+                <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5 text-emerald-300" />
               ) : (
-                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-400" />
+                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-300" />
               )}
               <span className="leading-relaxed">{resetStatus.message}</span>
             </div>
@@ -267,30 +293,32 @@ export const LoginPage: React.FC = () => {
               value={resetEmail}
               onChange={(e) => setResetEmail(e.target.value)}
               placeholder="registered@email.com"
-              leftIcon={<Mail className="w-4 h-4 text-slate-500" />}
+              leftIcon={<Mail className="w-4 h-4 text-emerald-300/70" />}
               autoFocus
             />
 
             <div className="flex items-center gap-3 pt-1">
-              <Button
+              <button
                 type="button"
-                variant="outline"
-                size="md"
                 onClick={() => setShowResetModal(false)}
-                className="flex-1"
+                className="flex-1 h-11 rounded-xl bg-white/[0.08] hover:bg-white/[0.12] border border-white/10 text-white font-semibold text-xs transition-colors cursor-pointer"
               >
                 Cancel
-              </Button>
-              <Button
+              </button>
+              <button
                 type="submit"
-                variant="primary"
-                size="md"
-                isLoading={resetSubmitting}
-                className="flex-1"
-                rightIcon={<Send className="w-3.5 h-3.5" />}
+                disabled={resetSubmitting}
+                className="flex-1 h-11 rounded-xl bg-gradient-to-r from-emerald-400 via-emerald-500 to-teal-400 hover:from-emerald-300 hover:to-teal-300 text-slate-950 font-bold text-xs shadow-md transition-all cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-60"
               >
-                {resetSubmitting ? 'Sending...' : 'Send Link'}
-              </Button>
+                {resetSubmitting ? (
+                  <span>Sending...</span>
+                ) : (
+                  <>
+                    <span>Send Link</span>
+                    <Send className="w-3.5 h-3.5" />
+                  </>
+                )}
+              </button>
             </div>
           </form>
         </div>

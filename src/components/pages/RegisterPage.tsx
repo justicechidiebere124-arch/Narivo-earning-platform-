@@ -6,9 +6,8 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { usePageSeo } from '../../hooks/usePageSeo';
-import { Card, Input, Button, Badge } from '../ui';
+import { Input } from '../ui';
 import { 
-  ShieldCheck, 
   ArrowRight, 
   Lock, 
   Mail, 
@@ -16,7 +15,6 @@ import {
   Phone, 
   Tag, 
   AlertCircle, 
-  ArrowLeft,
   CheckCircle2,
   Inbox
 } from 'lucide-react';
@@ -33,13 +31,13 @@ export const RegisterPage: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Verification success screen state
+  // Verification state for when email confirmation is needed
   const [registrationSuccessEmail, setRegistrationSuccessEmail] = useState<string | null>(null);
   const [isResending, setIsResending] = useState(false);
 
   usePageSeo({
-    title: 'Create Free Account – NARIVO',
-    description: 'Register a free NARIVO member account to access advertiser-funded campaigns and digital reward opportunities in Nigeria.',
+    title: 'Create Your Account – NARIVO',
+    description: 'Create your account to access authentic sponsored tasks and digital opportunities with NARIVO.',
     canonicalPath: '/register',
   });
 
@@ -68,7 +66,7 @@ export const RegisterPage: React.FC = () => {
       return;
     }
     if (!agreedToTerms) {
-      setError('You must accept the terms of service and anti-fraud verification policy.');
+      setError('You must agree to the Terms of Service and Privacy Policy to proceed.');
       return;
     }
 
@@ -90,9 +88,9 @@ export const RegisterPage: React.FC = () => {
         setError(res.error || 'Failed to complete registration.');
       } else if (res.needsEmailVerification) {
         setRegistrationSuccessEmail(email);
-        showToast('Registration received. Please check your email inbox.');
+        showToast('Account created. Please verify your email inbox.');
       } else {
-        showToast('Welcome to NARIVO! Your member profile is active.');
+        showToast('Welcome to NARIVO! Your account is active.');
       }
     } catch (err: any) {
       setError(err?.message || 'Network exception during registration.');
@@ -118,27 +116,37 @@ export const RegisterPage: React.FC = () => {
     }
   };
 
-  // If email confirmation is required by Supabase Auth:
+  // If email verification is required
   if (registrationSuccessEmail) {
     return (
-      <div className="max-w-md mx-auto px-4 py-12 sm:py-20 space-y-6">
-        <Card variant="elevated" className="p-6 sm:p-8 text-center space-y-5">
-          <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto shadow-sm">
+      <div className="relative min-h-screen flex flex-col items-center justify-center px-4 sm:px-6 py-8 sm:py-12 bg-[radial-gradient(ellipse_130%_90%_at_50%_-15%,#065f46_0%,#044e39_25%,#033a2b_50%,#022c22_75%,#011f18_100%)] selection:bg-emerald-400 selection:text-slate-950">
+        <div 
+          className="anim-ambient-1 absolute top-0 left-1/2 -translate-x-1/2 w-[720px] sm:w-[900px] h-[400px] bg-[radial-gradient(circle,rgba(52,211,153,0.25)_0%,rgba(16,185,129,0.12)_45%,transparent_75%)] blur-3xl pointer-events-none -z-10" 
+          aria-hidden="true" 
+        />
+
+        <div className="relative w-full max-w-[420px] rounded-3xl sm:rounded-[32px] bg-[#064e3b]/55 backdrop-blur-2xl border border-emerald-400/30 shadow-[0_24px_60px_rgba(1,26,20,0.85),inset_0_1px_1px_rgba(255,255,255,0.25)] p-6 sm:p-9 text-center space-y-5 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+          <div 
+            className="absolute top-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-transparent via-emerald-200/60 to-transparent pointer-events-none" 
+            aria-hidden="true" 
+          />
+
+          <div className="w-14 h-14 rounded-2xl bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 flex items-center justify-center mx-auto shadow-md">
             <Inbox className="w-7 h-7" />
           </div>
 
           <div className="space-y-1.5">
-            <h2 className="text-xl sm:text-2xl font-bold text-white font-heading">
+            <h2 className="text-2xl font-bold text-white font-heading">
               Verify Your Email
             </h2>
-            <p className="text-xs text-slate-300 leading-relaxed">
-              We sent an activation link to <strong className="text-white font-mono">{registrationSuccessEmail}</strong>.
+            <p className="text-xs text-slate-200 leading-relaxed">
+              We sent an activation link to <strong className="text-white font-mono break-all">{registrationSuccessEmail}</strong>.
             </p>
           </div>
 
-          <div className="p-4 rounded-xl bg-white/[0.03] border border-white/[0.06] text-xs text-slate-400 text-left space-y-2">
+          <div className="p-4 rounded-2xl bg-black/35 border border-emerald-400/20 text-xs text-slate-300 text-left space-y-2">
             <div className="flex items-center gap-2 text-white font-semibold">
-              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+              <CheckCircle2 className="w-4 h-4 text-emerald-300 shrink-0" />
               <span>Next Steps:</span>
             </div>
             <ol className="list-decimal pl-5 space-y-1 text-[11px] leading-relaxed">
@@ -148,69 +156,89 @@ export const RegisterPage: React.FC = () => {
           </div>
 
           <div className="space-y-2 pt-2">
-            <Button
+            <button
               onClick={() => setCurrentScreen('login')}
-              variant="primary"
-              size="lg"
-              className="w-full"
-              rightIcon={<ArrowRight className="w-4 h-4" />}
+              className="w-full h-12 rounded-2xl bg-gradient-to-r from-emerald-400 via-emerald-500 to-teal-400 hover:from-emerald-300 hover:to-teal-300 text-slate-950 font-extrabold text-sm shadow-[0_10px_24px_rgba(16,185,129,0.35)] active:scale-[0.99] transition-all cursor-pointer flex items-center justify-center gap-2"
             >
-              Proceed to Sign In
-            </Button>
+              <span>Proceed to Sign In</span>
+              <ArrowRight className="w-4 h-4 text-slate-950" />
+            </button>
 
             <button
               onClick={handleResend}
               disabled={isResending}
-              className="w-full py-2.5 text-xs text-slate-400 hover:text-white font-medium transition-colors cursor-pointer disabled:opacity-50"
+              className="w-full py-2.5 text-xs text-emerald-300 hover:text-emerald-200 font-medium transition-colors cursor-pointer disabled:opacity-50"
             >
               {isResending ? 'Sending...' : "Didn't receive email? Resend link"}
             </button>
           </div>
-        </Card>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-md mx-auto px-4 py-8 sm:py-12 space-y-6">
-      {/* Back to Home Link */}
-      <div>
-        <button
-          onClick={() => setCurrentScreen('landing')}
-          className="inline-flex items-center gap-2 text-xs font-semibold text-slate-400 hover:text-white transition-colors cursor-pointer"
-        >
-          <ArrowLeft className="w-4 h-4 text-emerald-400" />
-          <span>Back to Overview</span>
-        </button>
-      </div>
+    <div className="relative min-h-screen flex flex-col items-center justify-center px-4 sm:px-6 py-8 sm:py-12 bg-[radial-gradient(ellipse_130%_90%_at_50%_-15%,#065f46_0%,#044e39_25%,#033a2b_50%,#022c22_75%,#011f18_100%)] selection:bg-emerald-400 selection:text-slate-950">
+      
+      {/* 1. Emerald Ambient Illumination */}
+      <div 
+        className="anim-ambient-1 absolute top-0 left-1/2 -translate-x-1/2 w-[720px] sm:w-[900px] h-[400px] bg-[radial-gradient(circle,rgba(52,211,153,0.25)_0%,rgba(16,185,129,0.12)_45%,transparent_75%)] blur-3xl pointer-events-none -z-10" 
+        aria-hidden="true" 
+      />
+      <div 
+        className="anim-ambient-2 absolute top-1/4 -right-20 w-80 h-80 bg-emerald-400/15 rounded-full blur-3xl pointer-events-none -z-10" 
+        aria-hidden="true" 
+      />
+      <div 
+        className="anim-ambient-3 absolute bottom-10 -left-20 w-96 h-96 bg-teal-500/15 rounded-full blur-3xl pointer-events-none -z-10" 
+        aria-hidden="true" 
+      />
 
-      {/* Main Registration Card */}
-      <Card variant="elevated" className="p-6 sm:p-8 space-y-6">
-        <div className="space-y-2 text-center sm:text-left">
-          <div className="flex items-center justify-between">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-800 text-white font-black text-lg flex items-center justify-center shadow-md">
+      {/* Subtle glass contour grid */}
+      <div 
+        className="absolute inset-0 bg-[linear-gradient(to_right,rgba(52,211,153,0.05)_1px,transparent_1px),linear-gradient(to_bottom,rgba(52,211,153,0.05)_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_70%_60%_at_50%_45%,#000_65%,transparent_100%)] pointer-events-none -z-10"
+        aria-hidden="true"
+      />
+
+      {/* 2. Glassmorphic Registration Container */}
+      <div className="relative w-full max-w-[460px] rounded-3xl sm:rounded-[32px] bg-[#064e3b]/55 backdrop-blur-2xl border border-emerald-400/30 shadow-[0_24px_60px_rgba(1,26,20,0.85),inset_0_1px_1px_rgba(255,255,255,0.25),inset_0_0_30px_rgba(16,185,129,0.08)] p-6 sm:p-9 space-y-6 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+        
+        {/* Top specular sheen */}
+        <div 
+          className="absolute top-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-transparent via-emerald-200/60 to-transparent pointer-events-none" 
+          aria-hidden="true" 
+        />
+
+        {/* Brand Mark & Clear "Create Your Account" Heading */}
+        <div className="flex flex-col items-center text-center space-y-3">
+          <button
+            type="button"
+            onClick={() => setCurrentScreen('landing')}
+            className="inline-flex items-center gap-2.5 group focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 rounded-2xl p-1 cursor-pointer transition-transform active:scale-95"
+            title="Return to NARIVO Home"
+          >
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-400 via-emerald-500 to-teal-500 flex items-center justify-center text-slate-950 font-black text-xl shadow-[0_0_20px_rgba(52,211,153,0.5)] ring-1 ring-white/30 group-hover:scale-105 transition-transform">
               N
             </div>
-            <Badge variant="emerald" size="sm">
-              <ShieldCheck className="w-3 h-3" />
-              <span>Free Onboarding</span>
-            </Badge>
-          </div>
-          <h1 className="text-xl sm:text-2xl font-bold text-white font-heading pt-1">
-            Create Free Account
+            <span className="text-xl font-black tracking-[0.16em] text-white font-heading">
+              NARIVO
+            </span>
+          </button>
+
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight font-heading">
+            Create Your Account
           </h1>
-          <p className="text-xs text-slate-400">
-            Registration creates your member profile without mandatory upfront fees.
-          </p>
         </div>
 
+        {/* Error Alert Box */}
         {error && (
-          <div className="p-3.5 bg-rose-500/10 rounded-xl border border-rose-500/30 text-xs text-rose-300 flex items-start gap-2.5">
-            <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
-            <span className="leading-relaxed">{error}</span>
+          <div className="p-3.5 bg-rose-500/15 rounded-xl border border-rose-500/35 text-xs text-rose-200 flex items-start gap-2.5">
+            <AlertCircle className="w-4 h-4 text-rose-300 shrink-0 mt-0.5" />
+            <span className="leading-relaxed font-medium">{error}</span>
           </div>
         )}
 
+        {/* Essential Registration Form */}
         <form onSubmit={handleSubmit} className="space-y-3.5">
           <Input
             label="Full Legal Name"
@@ -219,8 +247,7 @@ export const RegisterPage: React.FC = () => {
             value={fullName}
             onChange={(e) => setFullName(e.target.value)}
             placeholder="Justice Chidiebere"
-            leftIcon={<User className="w-4 h-4 text-slate-500" />}
-            helperText="Must match your Nigerian commercial bank account name."
+            leftIcon={<User className="w-4 h-4 text-emerald-300/70" />}
             autoComplete="name"
           />
 
@@ -231,7 +258,7 @@ export const RegisterPage: React.FC = () => {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="name@domain.com"
-            leftIcon={<Mail className="w-4 h-4 text-slate-500" />}
+            leftIcon={<Mail className="w-4 h-4 text-emerald-300/70" />}
             autoComplete="email"
           />
 
@@ -242,7 +269,7 @@ export const RegisterPage: React.FC = () => {
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
             placeholder="0801 234 5678"
-            leftIcon={<Phone className="w-4 h-4 text-slate-500" />}
+            leftIcon={<Phone className="w-4 h-4 text-emerald-300/70" />}
             autoComplete="tel"
           />
 
@@ -254,7 +281,7 @@ export const RegisterPage: React.FC = () => {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Min. 6 chars"
-              leftIcon={<Lock className="w-4 h-4 text-slate-500" />}
+              leftIcon={<Lock className="w-4 h-4 text-emerald-300/70" />}
               autoComplete="new-password"
             />
 
@@ -265,7 +292,7 @@ export const RegisterPage: React.FC = () => {
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               placeholder="Repeat password"
-              leftIcon={<Lock className="w-4 h-4 text-slate-500" />}
+              leftIcon={<Lock className="w-4 h-4 text-emerald-300/70" />}
               autoComplete="new-password"
             />
           </div>
@@ -276,47 +303,55 @@ export const RegisterPage: React.FC = () => {
             value={referralCode}
             onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
             placeholder="e.g. NAR-8429"
-            leftIcon={<Tag className="w-4 h-4 text-slate-500" />}
+            leftIcon={<Tag className="w-4 h-4 text-emerald-300/70" />}
             className="uppercase font-mono"
           />
 
-          {/* Terms Agreement */}
-          <div className="pt-1">
-            <label className="flex items-start gap-2.5 cursor-pointer text-xs text-slate-400 select-none">
+          {/* Required Terms Acceptance Checkbox */}
+          <div className="pt-1.5">
+            <label className="flex items-start gap-2.5 cursor-pointer text-xs text-slate-200 select-none">
               <input
                 type="checkbox"
+                required
                 checked={agreedToTerms}
                 onChange={(e) => setAgreedToTerms(e.target.checked)}
-                className="mt-0.5 w-4 h-4 rounded border-white/20 bg-black/40 text-emerald-500 focus:ring-0 focus:ring-offset-0 cursor-pointer accent-emerald-500 shrink-0"
+                className="mt-0.5 w-4 h-4 rounded border-emerald-400/30 bg-black/50 text-emerald-500 focus:ring-0 focus:ring-offset-0 cursor-pointer accent-emerald-500 shrink-0"
               />
               <span className="leading-relaxed">
-                I agree to the NARIVO Terms of Service, anti-fraud audit policies, and verify that all information provided is accurate.
+                I agree to the Terms of Service and Privacy Policy.
               </span>
             </label>
           </div>
 
-          <Button
+          {/* Register Button */}
+          <button
             type="submit"
-            variant="primary"
-            size="lg"
-            isLoading={isSubmitting}
-            className="w-full mt-2"
-            rightIcon={<ArrowRight className="w-4 h-4" />}
+            disabled={isSubmitting}
+            className="w-full h-12 rounded-2xl bg-gradient-to-r from-emerald-400 via-emerald-500 to-teal-400 hover:from-emerald-300 hover:to-teal-300 text-slate-950 font-extrabold text-sm shadow-[0_10px_24px_rgba(16,185,129,0.35)] hover:shadow-[0_14px_30px_rgba(16,185,129,0.48)] active:scale-[0.99] transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed mt-2"
           >
-            {isSubmitting ? 'Registering Profile...' : 'Create Free Account'}
-          </Button>
+            {isSubmitting ? (
+              <span>Creating Account...</span>
+            ) : (
+              <>
+                <span>Register</span>
+                <ArrowRight className="w-4 h-4 text-slate-950" />
+              </>
+            )}
+          </button>
         </form>
 
-        <div className="pt-2 text-center text-xs text-slate-400 border-t border-white/[0.06]">
-          <span>Already registered? </span>
+        {/* Small Sign In Link */}
+        <p className="text-xs text-slate-300 text-center pt-2">
+          Already have an account?{' '}
           <button
+            type="button"
             onClick={() => setCurrentScreen('login')}
-            className="font-bold text-emerald-400 hover:text-emerald-300 transition-colors cursor-pointer ml-1"
+            className="font-bold text-emerald-300 hover:text-emerald-200 underline underline-offset-4 transition-colors cursor-pointer ml-1"
           >
-            Sign in here
+            Sign In
           </button>
-        </div>
-      </Card>
+        </p>
+      </div>
     </div>
   );
 };

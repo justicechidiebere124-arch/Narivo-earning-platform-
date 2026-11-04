@@ -33,6 +33,7 @@ const MainContent: React.FC = () => {
 
   const isPortalScreen = isAuthenticated && ['dashboard', 'tasks', 'wallet', 'referrals', 'profile', 'membership'].includes(currentScreen);
   const isLanding = currentScreen === 'landing';
+  const isAuthScreen = currentScreen === 'login' || currentScreen === 'register';
 
   const renderScreen = () => {
     switch (currentScreen) {
@@ -71,12 +72,12 @@ const MainContent: React.FC = () => {
     }
   };
 
-  // Minimal, uncompromised Emerald Glass landing page without duplicate headers or footer menus
-  if (isLanding) {
+  // Minimal, uncompromised Emerald Glass layout for landing and auth screens (no top nav, no bottom nav, no footer marketing clutter)
+  if (isLanding || isAuthScreen) {
     return (
-      <div className="min-h-screen flex flex-col bg-[#022c22] text-slate-100 font-sans selection:bg-emerald-500/30 selection:text-emerald-300 relative overflow-x-hidden">
+      <div className="min-h-screen flex flex-col bg-[#022c22] text-slate-100 font-sans selection:bg-emerald-400 selection:text-slate-950 relative overflow-x-hidden">
         <main className="flex-1 flex flex-col">
-          <LandingPage />
+          {renderScreen()}
         </main>
 
         {/* Reactive Toast Notification */}
