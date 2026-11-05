@@ -35,6 +35,8 @@ export type ScreenType =
   | 'privacy'
   | 'register' 
   | 'login' 
+  | 'forgot-password'
+  | 'reset-password'
   | 'auth-callback'
   | 'dashboard' 
   | 'tasks' 
@@ -53,6 +55,8 @@ export const SCREEN_ROUTES: Record<ScreenType, string> = {
   privacy: '/privacy',
   register: '/register',
   login: '/login',
+  'forgot-password': '/forgot-password',
+  'reset-password': '/reset-password',
   'auth-callback': '/auth/callback',
   dashboard: '/dashboard',
   tasks: '/tasks',

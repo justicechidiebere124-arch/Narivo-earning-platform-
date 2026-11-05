@@ -54,26 +54,33 @@ export const Modal: React.FC<ModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-150"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-150 selection:bg-emerald-400 selection:text-slate-950"
       role="dialog"
       aria-modal="true"
       onClick={onClose}
     >
       <div
         className={`
-          w-full ${maxWidthStyles[effectiveSize]} rounded-3xl bg-[#0a0f15] border border-white/[0.1] shadow-2xl
-          flex flex-col max-h-[90vh] overflow-hidden animate-in zoom-in-95 duration-150
+          w-full ${maxWidthStyles[effectiveSize]} rounded-3xl bg-[#032a20]/95 backdrop-blur-2xl border border-emerald-400/30
+          shadow-[0_25px_60px_rgba(1,26,20,0.9),inset_0_1px_1px_rgba(255,255,255,0.2)]
+          flex flex-col max-h-[90vh] overflow-hidden animate-in zoom-in-95 duration-150 relative
         `}
         onClick={(e) => e.stopPropagation()}
       >
+        {/* Specular sheen */}
+        <div 
+          className="absolute top-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-transparent via-emerald-200/50 to-transparent pointer-events-none" 
+          aria-hidden="true" 
+        />
+
         {/* Header */}
-        <div className="p-5 sm:p-6 border-b border-white/[0.07] flex items-center justify-between shrink-0">
+        <div className="p-5 sm:p-6 border-b border-emerald-400/20 flex items-center justify-between shrink-0">
           <div className="space-y-0.5 min-w-0 pr-4">
-            <h3 className="text-base font-bold text-white font-heading truncate">
+            <h3 className="text-base sm:text-lg font-bold text-white font-heading truncate">
               {title}
             </h3>
             {effectiveSubtitle && (
-              <p className="text-xs text-slate-400 truncate">
+              <p className="text-xs text-slate-300 truncate">
                 {effectiveSubtitle}
               </p>
             )}
@@ -81,7 +88,7 @@ export const Modal: React.FC<ModalProps> = ({
 
           <button
             onClick={onClose}
-            className="p-2 text-slate-400 hover:text-white hover:bg-white/[0.06] rounded-xl transition-colors cursor-pointer shrink-0"
+            className="p-2 text-slate-300 hover:text-white hover:bg-white/[0.08] rounded-xl transition-colors cursor-pointer shrink-0"
             aria-label="Close dialog"
           >
             <X className="w-5 h-5" />
@@ -89,13 +96,13 @@ export const Modal: React.FC<ModalProps> = ({
         </div>
 
         {/* Content */}
-        <div className="p-5 sm:p-6 overflow-y-auto space-y-4 text-xs text-slate-300">
+        <div className="p-5 sm:p-6 overflow-y-auto space-y-4 text-xs text-slate-200">
           {children}
         </div>
 
         {/* Footer */}
         {footer && (
-          <div className="p-4 sm:p-5 border-t border-white/[0.07] bg-black/30 flex items-center justify-end gap-3 shrink-0">
+          <div className="p-4 sm:p-5 border-t border-emerald-400/20 bg-black/30 flex items-center justify-end gap-3 shrink-0">
             {footer}
           </div>
         )}

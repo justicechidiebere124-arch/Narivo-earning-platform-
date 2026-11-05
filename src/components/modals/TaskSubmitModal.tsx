@@ -81,7 +81,7 @@ export const TaskSubmitModal: React.FC = () => {
     >
       <div className="space-y-6">
         {/* Reward and Window Callout */}
-        <div className="p-4 rounded-2xl bg-gradient-to-br from-[#063b2a]/40 to-[#04241a]/40 border border-emerald-500/30 flex items-center justify-between">
+        <div className="p-4 rounded-2xl bg-gradient-to-br from-[#064e3b]/60 to-[#032a20]/80 border border-emerald-400/30 flex items-center justify-between">
           <div>
             <span className="text-[10px] text-emerald-300 uppercase tracking-wider block font-heading">
               Reward Upon Approval
@@ -91,11 +91,11 @@ export const TaskSubmitModal: React.FC = () => {
             </span>
           </div>
           <div className="text-right">
-            <span className="text-[10px] text-slate-400 block flex items-center justify-end gap-1">
-              <Clock className="w-3.5 h-3.5 text-slate-400" />
+            <span className="text-[10px] text-slate-300 block flex items-center justify-end gap-1">
+              <Clock className="w-3.5 h-3.5 text-emerald-400" />
               <span>Audit Window</span>
             </span>
-            <span className="text-xs font-bold text-slate-200">
+            <span className="text-xs font-bold text-white">
               24–48 Hours
             </span>
           </div>
@@ -103,13 +103,13 @@ export const TaskSubmitModal: React.FC = () => {
 
         {/* Instructions List */}
         <div className="space-y-2">
-          <h4 className="text-xs font-bold uppercase tracking-wider text-slate-300 font-heading">
+          <h4 className="text-xs font-bold uppercase tracking-wider text-emerald-300 font-heading">
             Task Execution Instructions
           </h4>
-          <div className="p-4 rounded-xl bg-white/[0.03] border border-white/[0.06] text-xs text-slate-300 space-y-2">
+          <div className="p-4 rounded-2xl bg-black/40 border border-emerald-400/20 text-xs text-slate-200 space-y-2">
             <ol className="list-decimal list-inside space-y-1.5 leading-relaxed">
               {task.instructions.map((inst, index) => (
-                <li key={index} className="text-slate-300">
+                <li key={index} className="text-slate-200">
                   {inst}
                 </li>
               ))}

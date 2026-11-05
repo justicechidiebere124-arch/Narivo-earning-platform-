@@ -29,10 +29,10 @@ export const Card: React.FC<CardProps> = ({
   const effectiveVariant = variant === 'default' ? 'standard' : variant;
 
   const variantStyles = {
-    standard: 'bg-[#0b1016] border-white/[0.07] text-slate-200',
-    elevated: 'bg-[#0f1720] border-white/[0.1] shadow-[0_10px_30px_rgba(0,0,0,0.4)] text-slate-100',
-    balance: 'bg-gradient-to-br from-[#063124] via-[#042017] to-[#02130e] border-emerald-500/35 shadow-[0_12px_40px_rgba(4,32,23,0.6)] text-white',
-    interactive: 'bg-[#0b1016] border-white/[0.07] hover:border-emerald-500/30 hover:bg-[#0e151d] cursor-pointer text-slate-200 active:scale-[0.99]',
+    standard: 'bg-[#064e3b]/35 backdrop-blur-xl border border-emerald-400/20 text-slate-100 shadow-[0_8px_30px_rgba(1,26,20,0.5)]',
+    elevated: 'bg-[#064e3b]/50 backdrop-blur-2xl border border-emerald-400/30 shadow-[0_16px_40px_rgba(1,26,20,0.7),inset_0_1px_1px_rgba(255,255,255,0.15)] text-slate-100',
+    balance: 'bg-gradient-to-br from-[#064e3b]/85 via-[#043d2e]/90 to-[#022c22]/95 backdrop-blur-2xl border border-emerald-400/40 shadow-[0_20px_50px_rgba(1,26,20,0.8),inset_0_1px_1px_rgba(255,255,255,0.25)] text-white',
+    interactive: 'bg-[#064e3b]/30 backdrop-blur-xl border border-emerald-400/20 hover:border-emerald-400/45 hover:bg-[#064e3b]/50 text-slate-100 active:scale-[0.99] transition-all cursor-pointer',
   };
 
   return (

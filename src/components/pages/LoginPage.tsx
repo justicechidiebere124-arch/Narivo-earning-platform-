@@ -275,11 +275,7 @@ export const LoginPage: React.FC = () => {
               </label>
               <button
                 type="button"
-                onClick={() => {
-                  setResetEmail(email);
-                  setResetStatus(null);
-                  setShowResetModal(true);
-                }}
+                onClick={() => setCurrentScreen('forgot-password')}
                 className="text-xs font-semibold text-emerald-300 hover:text-emerald-200 transition-colors cursor-pointer"
               >
                 Forgot Password?

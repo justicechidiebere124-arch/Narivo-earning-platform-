@@ -27,8 +27,8 @@ export const StatCard: React.FC<StatCardProps> = ({
       className={`
         p-4 sm:p-5 rounded-2xl border transition-all duration-150 space-y-2
         ${variant === 'highlight' 
-          ? 'bg-gradient-to-br from-[#063124] to-[#031c14] border-emerald-500/30' 
-          : 'bg-[#0b1016] border-white/[0.07]'}
+          ? 'bg-gradient-to-br from-[#064e3b]/80 to-[#032a20]/90 backdrop-blur-xl border-emerald-400/35 shadow-[0_12px_32px_rgba(1,26,20,0.6)]' 
+          : 'bg-[#064e3b]/30 backdrop-blur-xl border-emerald-400/20 shadow-[0_8px_24px_rgba(1,26,20,0.4)]'}
         ${className}
       `}
     >
