@@ -20,6 +20,7 @@ import { TermsPage } from './components/pages/TermsPage';
 import { PrivacyPage } from './components/pages/PrivacyPage';
 import { RegisterPage } from './components/pages/RegisterPage';
 import { LoginPage } from './components/pages/LoginPage';
+import { AuthCallbackPage } from './components/pages/AuthCallbackPage';
 import { MemberDashboard } from './components/pages/MemberDashboard';
 import { TasksPage } from './components/pages/TasksPage';
 import { WalletPage } from './components/pages/WalletPage';
@@ -33,7 +34,7 @@ const MainContent: React.FC = () => {
 
   const isPortalScreen = isAuthenticated && ['dashboard', 'tasks', 'wallet', 'referrals', 'profile', 'membership'].includes(currentScreen);
   const isLanding = currentScreen === 'landing';
-  const isAuthScreen = currentScreen === 'login' || currentScreen === 'register';
+  const isAuthScreen = currentScreen === 'login' || currentScreen === 'register' || currentScreen === 'auth-callback';
 
   const renderScreen = () => {
     switch (currentScreen) {
@@ -53,6 +54,8 @@ const MainContent: React.FC = () => {
         return <RegisterPage />;
       case 'login':
         return <LoginPage />;
+      case 'auth-callback':
+        return <AuthCallbackPage />;
       case 'dashboard':
         return <MemberDashboard />;
       case 'tasks':

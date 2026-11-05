@@ -35,6 +35,7 @@ export type ScreenType =
   | 'privacy'
   | 'register' 
   | 'login' 
+  | 'auth-callback'
   | 'dashboard' 
   | 'tasks' 
   | 'wallet' 
@@ -52,6 +53,7 @@ export const SCREEN_ROUTES: Record<ScreenType, string> = {
   privacy: '/privacy',
   register: '/register',
   login: '/login',
+  'auth-callback': '/auth/callback',
   dashboard: '/dashboard',
   tasks: '/tasks',
   wallet: '/wallet',
@@ -128,6 +130,8 @@ interface AppContextType {
   // Actions
   login: (email: string, pass: string) => Promise<AuthResponse>;
   register: (data: { fullName: string; email: string; phone: string; password?: string; referralCode?: string }) => Promise<AuthResponse>;
+  signInWithGoogle: () => Promise<AuthResponse>;
+  ensureUserProfile: (sbUser: SupabaseAuthUser) => Promise<DatabaseProfile | null>;
   logout: () => Promise<void>;
   resetPassword: (email: string) => Promise<{ success: boolean; error?: string }>;
   resendVerificationEmail: (email?: string) => Promise<{ success: boolean; message: string }>;
@@ -139,6 +143,7 @@ interface AppContextType {
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
+
 
 // Helper to check whether a membership is genuinely active (status = 'active' AND not expired)
 export const checkMembershipIsActive = (m: DatabaseMembership | null): boolean => {
@@ -736,6 +741,82 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [user, fetchPublicData, fetchUserData]);
 
   // =========================================================================
+  // USER PROFILE SYNCHRONIZATION (IDEMPOTENT & STRICT)
+  // =========================================================================
+  const ensureUserProfile = useCallback(async (sbUser: SupabaseAuthUser): Promise<DatabaseProfile | null> => {
+    if (!isSupabaseConfigured) return null;
+
+    try {
+      // 1. Check whether user's profile already exists in public.profiles
+      const { data: existingProfile, error: fetchErr } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', sbUser.id)
+        .maybeSingle();
+
+      if (!fetchErr && existingProfile) {
+        setDbProfile(existingProfile as DatabaseProfile);
+        return existingProfile as DatabaseProfile;
+      }
+
+      // 2. If it does not exist, safely create the profile using authenticated Supabase user ID and metadata
+      const meta = sbUser.user_metadata || {};
+      const fullName = meta.full_name || meta.name || sbUser.email?.split('@')[0] || 'NARIVO Member';
+      const email = sbUser.email || '';
+      const phone = meta.phone || meta.phone_number || null;
+
+      const { data: inserted, error: insertErr } = await supabase
+        .from('profiles')
+        .insert({
+          id: sbUser.id,
+          full_name: fullName,
+          email: email,
+          phone_number: phone,
+        })
+        .select('*')
+        .maybeSingle();
+
+      if (insertErr) {
+        console.warn('Profile insert note (may be handled by DB trigger or RLS):', insertErr.message);
+        // If trigger already inserted it, query one more time
+        const { data: recheck } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', sbUser.id)
+          .maybeSingle();
+        if (recheck) {
+          setDbProfile(recheck as DatabaseProfile);
+          return recheck as DatabaseProfile;
+        }
+        return null;
+      }
+
+      if (inserted) {
+        setDbProfile(inserted as DatabaseProfile);
+      }
+
+      // Ensure default referral code is created if not already present
+      const defaultRefCode = `NAR-${sbUser.id.slice(0, 6).toUpperCase()}`;
+      try {
+        await supabase
+          .from('referral_codes')
+          .insert({
+            user_id: sbUser.id,
+            code: defaultRefCode,
+            is_active: true,
+          });
+      } catch {
+        // Ignored if RLS or unique constraint already handles this
+      }
+
+      return (inserted as DatabaseProfile) || null;
+    } catch (err) {
+      console.warn('Exception ensuring user profile:', err);
+      return null;
+    }
+  }, []);
+
+  // =========================================================================
   // SUPABASE SESSION PERSISTENCE & AUTH LISTENER
   // =========================================================================
   useEffect(() => {
@@ -758,6 +839,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
         if (session?.user && isMounted) {
           setIsAuthenticated(true);
+          await ensureUserProfile(session.user);
           await fetchUserData(session.user.id, session.user);
         }
       } catch (err) {
@@ -775,6 +857,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (event === 'SIGNED_IN' || event === 'USER_UPDATED' || event === 'TOKEN_REFRESHED') {
         if (session?.user) {
           setIsAuthenticated(true);
+          await ensureUserProfile(session.user);
           await fetchUserData(session.user.id, session.user);
         }
       } else if (event === 'SIGNED_OUT') {
@@ -798,16 +881,68 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       isMounted = false;
       subscription?.unsubscribe();
     };
-  }, [fetchUserData]);
+  }, [fetchPublicData, fetchUserData, ensureUserProfile]);
 
-  // Route protection check
+  // Listen for OAuth popup completion (supports AI Studio iframe environment)
+  useEffect(() => {
+    const handleOAuthPopupMessage = async (event: MessageEvent) => {
+      if (typeof window !== 'undefined') {
+        const origin = event.origin;
+        if (
+          origin !== window.location.origin && 
+          !origin.endsWith('.run.app') && 
+          !origin.includes('localhost')
+        ) {
+          return;
+        }
+      }
+
+      if (event.data?.type === 'NARIVO_OAUTH_SUCCESS') {
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session?.user) {
+            setIsAuthenticated(true);
+            await ensureUserProfile(session.user);
+            await fetchUserData(session.user.id, session.user);
+            showToast('Signed in with Google successfully!');
+            setCurrentScreenState('dashboard');
+            if (typeof window !== 'undefined') {
+              const path = SCREEN_ROUTES['dashboard'];
+              if (window.location.pathname !== path) {
+                window.history.pushState(null, '', path);
+              }
+            }
+          }
+        } catch (e) {
+          console.warn('Error handling OAuth popup message:', e);
+        }
+      }
+    };
+
+    window.addEventListener('message', handleOAuthPopupMessage);
+    return () => window.removeEventListener('message', handleOAuthPopupMessage);
+  }, [ensureUserProfile, fetchUserData, showToast]);
+
+  // Route protection check: require authentication for protected pages
   useEffect(() => {
     if (!authLoading && !isAuthenticated && protectedScreens.includes(currentScreen)) {
       setCurrentScreenState('login');
     }
+  }, [authLoading, isAuthenticated, currentScreen, protectedScreens]);
+
+  // Automatically redirect authenticated users visiting /login or /register to /dashboard
+  useEffect(() => {
+    if (!authLoading && isAuthenticated && (currentScreen === 'login' || currentScreen === 'register')) {
+      setCurrentScreenState('dashboard');
+      if (typeof window !== 'undefined') {
+        const path = SCREEN_ROUTES['dashboard'];
+        if (window.location.pathname !== path) {
+          window.history.pushState(null, '', path);
+        }
+      }
+    }
   }, [authLoading, isAuthenticated, currentScreen]);
 
-  // =========================================================================
   // AUTH ACTIONS
   // =========================================================================
   const login = async (email: string, pass: string): Promise<AuthResponse> => {
@@ -896,7 +1031,56 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  const signInWithGoogle = async (): Promise<AuthResponse> => {
+    if (!isSupabaseConfigured) {
+      return { success: false, error: 'Supabase credentials are not configured.' };
+    }
+
+    try {
+      const origin = typeof window !== 'undefined' ? window.location.origin : '';
+      const redirectTo = `${origin}/auth/callback`;
+      const isIframe = typeof window !== 'undefined' && window.self !== window.top;
+
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo,
+          skipBrowserRedirect: isIframe, // In iframe, prevent framing errors by opening popup directly
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'select_account',
+          },
+        },
+      });
+
+      if (error) {
+        return { success: false, error: error.message };
+      }
+
+      if (isIframe && data?.url) {
+        const popup = window.open(
+          data.url,
+          'narivo_google_auth',
+          'width=540,height=660,menubar=no,toolbar=no,status=no,location=yes'
+        );
+
+        if (!popup || popup.closed || typeof popup.closed === 'undefined') {
+          // If popup blocker intervened, open in new tab
+          window.open(data.url, '_blank');
+        }
+      }
+
+      return { success: true };
+    } catch (err: any) {
+      return { 
+        success: false, 
+        error: err?.message || 'Failed to initiate Google authentication. Please try again.' 
+      };
+    }
+  };
+
   const logout = async () => {
+
     if (isSupabaseConfigured) {
       try {
         await supabase.auth.signOut();
@@ -1158,6 +1342,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setIsArchitectureModalOpen,
         login,
         register,
+        signInWithGoogle,
+        ensureUserProfile,
         logout,
         resetPassword,
         resendVerificationEmail,

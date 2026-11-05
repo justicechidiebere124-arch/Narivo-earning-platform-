@@ -3,25 +3,43 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { usePageSeo } from '../../hooks/usePageSeo';
-import { Input, Modal } from '../ui';
+import { Input, Modal, GoogleLogo } from '../ui';
 import { 
   Lock, 
   Mail, 
   ArrowRight, 
   AlertCircle, 
   CheckCircle2,
-  Send
+  Send,
+  Loader2
 } from 'lucide-react';
 
 export const LoginPage: React.FC = () => {
-  const { login, setCurrentScreen, showToast, resetPassword, resendVerificationEmail } = useApp();
+  const { 
+    login, 
+    signInWithGoogle, 
+    isAuthenticated, 
+    authLoading, 
+    setCurrentScreen, 
+    showToast, 
+    resetPassword, 
+    resendVerificationEmail 
+  } = useApp();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Automatically redirect authenticated users to dashboard
+  useEffect(() => {
+    if (isAuthenticated && !authLoading) {
+      setCurrentScreen('dashboard');
+    }
+  }, [isAuthenticated, authLoading, setCurrentScreen]);
 
   // Password reset modal state
   const [showResetModal, setShowResetModal] = useState(false);
@@ -38,6 +56,21 @@ export const LoginPage: React.FC = () => {
     description: 'Sign in to access your NARIVO account.',
     canonicalPath: '/login',
   });
+
+  const handleGoogleSignIn = async () => {
+    setError(null);
+    setIsGoogleSubmitting(true);
+    try {
+      const res = await signInWithGoogle();
+      if (!res.success) {
+        setError(res.error || 'Failed to authenticate with Google. Please try again.');
+      }
+    } catch (err: any) {
+      setError(err?.message || 'An unexpected error occurred during Google sign in.');
+    } finally {
+      setIsGoogleSubmitting(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -190,6 +223,37 @@ export const LoginPage: React.FC = () => {
             )}
           </div>
         )}
+
+        {/* Google Authentication Button */}
+        <div className="space-y-4">
+          <button
+            type="button"
+            onClick={handleGoogleSignIn}
+            disabled={isSubmitting || isGoogleSubmitting}
+            className="w-full h-12 rounded-2xl bg-white hover:bg-slate-50 text-slate-800 font-bold text-sm border border-white/80 shadow-[0_4px_16px_rgba(0,0,0,0.18)] hover:shadow-[0_6px_22px_rgba(0,0,0,0.25)] active:scale-[0.99] transition-all cursor-pointer flex items-center justify-center gap-3 disabled:opacity-60 disabled:cursor-not-allowed select-none group"
+            aria-label="Continue with Google"
+          >
+            {isGoogleSubmitting ? (
+              <div className="flex items-center gap-2 text-slate-700">
+                <Loader2 className="w-4 h-4 animate-spin text-slate-600" />
+                <span>Connecting to Google...</span>
+              </div>
+            ) : (
+              <>
+                <GoogleLogo className="w-5 h-5 shrink-0" />
+                <span className="font-bold text-slate-800 tracking-tight">Continue with Google</span>
+              </>
+            )}
+          </button>
+
+          {/* Subtle OR Divider */}
+          <div className="relative flex items-center justify-center">
+            <div className="w-full border-t border-emerald-400/20" />
+            <span className="absolute px-3 bg-[#064e3b] text-[11px] font-bold text-emerald-200/80 uppercase tracking-wider rounded-full border border-emerald-400/20 select-none">
+              or
+            </span>
+          </div>
+        </div>
 
         {/* Essential Sign-In Form */}
         <form onSubmit={handleSubmit} className="space-y-4">

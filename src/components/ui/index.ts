@@ -12,3 +12,4 @@ export * from './StatCard';
 export * from './EmptyState';
 export * from './Modal';
 export * from './LoadingSkeleton';
+export * from './GoogleLogo';
