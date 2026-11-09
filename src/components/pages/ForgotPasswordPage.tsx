@@ -36,12 +36,19 @@ export const ForgotPasswordPage: React.FC = () => {
       const res = await resetPassword(email);
       if (res.success) {
         setIsSent(true);
-        showToast('Password recovery email dispatched successfully.');
+        showToast('Password recovery instructions sent.');
+      } else if (res.error && res.error.toLowerCase().includes('rate limit')) {
+        setError('Too many reset requests. Please wait a few minutes before trying again.');
       } else {
-        setError(res.error || 'Unable to send recovery instructions. Please verify your email.');
+        // Anti-enumeration: Confirm email dispatch without revealing whether user exists
+        setIsSent(true);
       }
     } catch (err: any) {
-      setError(err?.message || 'An unexpected error occurred. Please try again.');
+      if (err?.message?.toLowerCase().includes('rate limit')) {
+        setError('Too many reset requests. Please wait a few minutes before trying again.');
+      } else {
+        setIsSent(true);
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -123,7 +130,7 @@ export const ForgotPasswordPage: React.FC = () => {
                 Check Your Inbox
               </h2>
               <p className="text-xs text-slate-200 leading-relaxed">
-                We sent a password recovery link to <strong className="text-white font-mono break-all">{email}</strong>. Follow the instructions to reset your password.
+                If an account exists for <strong className="text-white font-mono break-all">{email}</strong>, a secure password recovery link has been dispatched. Please check your inbox and spam folders.
               </p>
             </div>
 

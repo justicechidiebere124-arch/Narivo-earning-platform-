@@ -111,6 +111,18 @@ export const AuthCallbackPage: React.FC = () => {
         const code = currentUrl.searchParams.get('code');
         const error = currentUrl.searchParams.get('error');
         const errorDescription = currentUrl.searchParams.get('error_description');
+        const type = currentUrl.searchParams.get('type') || 
+          (window.location.hash.includes('type=recovery') ? 'recovery' : null);
+
+        // If this callback was triggered by a password recovery link, route directly to /reset-password
+        if (type === 'recovery') {
+          if (timeoutRef.current) clearTimeout(timeoutRef.current);
+          setCurrentScreen('reset-password');
+          if (typeof window !== 'undefined') {
+            window.history.replaceState(null, '', `/reset-password${window.location.search}${window.location.hash}`);
+          }
+          return;
+        }
 
         // Check for error parameters from OAuth provider
         if (error || errorDescription) {
@@ -168,9 +180,18 @@ export const AuthCallbackPage: React.FC = () => {
           return;
         }
 
-        // Strategy E: Listen for incoming SIGNED_IN event from Supabase internal state machine
+        // Strategy E: Listen for incoming auth event from Supabase internal state machine
         const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
           if (!isSubscribed) return;
+          if (event === 'PASSWORD_RECOVERY') {
+            subscription.unsubscribe();
+            if (timeoutRef.current) clearTimeout(timeoutRef.current);
+            setCurrentScreen('reset-password');
+            if (typeof window !== 'undefined') {
+              window.history.replaceState(null, '', '/reset-password');
+            }
+            return;
+          }
           if ((event === 'SIGNED_IN' || event === 'USER_UPDATED') && session?.user) {
             subscription.unsubscribe();
             completeSuccess(session.user);

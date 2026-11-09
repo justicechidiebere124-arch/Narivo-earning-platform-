@@ -23,6 +23,7 @@ export const LoginPage: React.FC = () => {
     signInWithGoogle, 
     isAuthenticated, 
     authLoading, 
+    isPasswordRecovery,
     setCurrentScreen, 
     showToast, 
     resetPassword, 
@@ -34,12 +35,12 @@ export const LoginPage: React.FC = () => {
   const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Automatically redirect authenticated users to dashboard
+  // Automatically redirect authenticated users to dashboard (unless in password recovery)
   useEffect(() => {
-    if (isAuthenticated && !authLoading) {
+    if (isAuthenticated && !authLoading && !isPasswordRecovery) {
       setCurrentScreen('dashboard');
     }
-  }, [isAuthenticated, authLoading, setCurrentScreen]);
+  }, [isAuthenticated, authLoading, isPasswordRecovery, setCurrentScreen]);
 
   // Password reset modal state
   const [showResetModal, setShowResetModal] = useState(false);

@@ -3,58 +3,198 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { usePageSeo } from '../../hooks/usePageSeo';
 import { supabase } from '../../lib/supabase';
-import { Input } from '../ui';
-import { Lock, ArrowRight, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { 
+  Lock, 
+  ArrowRight, 
+  AlertCircle, 
+  CheckCircle2, 
+  Eye, 
+  EyeOff, 
+  ShieldAlert, 
+  RotateCw, 
+  Check, 
+  Circle,
+  ArrowLeft
+} from 'lucide-react';
 
 export const ResetPasswordPage: React.FC = () => {
-  const { setCurrentScreen, showToast } = useApp();
+  const { setCurrentScreen, showToast, setIsPasswordRecovery } = useApp();
+
+  const [status, setStatus] = useState<'verifying' | 'ready' | 'expired' | 'success'>('verifying');
+  const [errorNotice, setErrorNotice] = useState<string | null>(null);
+
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [isSuccess, setIsSuccess] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   usePageSeo({
-    title: 'Create New Password – NARIVO',
-    description: 'Set a new password for your NARIVO account.',
+    title: 'Set New Password – NARIVO',
+    description: 'Create a new secure password for your NARIVO account.',
     canonicalPath: '/reset-password',
   });
 
+  // 1. Password validation criteria
+  const hasMinLength = newPassword.length >= 8;
+  const hasNumberOrSymbol = /[0-9!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(newPassword);
+  const passwordsMatch = newPassword.length > 0 && newPassword === confirmPassword;
+  const isFormValid = hasMinLength && hasNumberOrSymbol && passwordsMatch;
+
+  // 2. Establish and verify the recovery session on mount
+  useEffect(() => {
+    let isMounted = true;
+    setIsPasswordRecovery(true);
+
+    const verifyRecoveryState = async () => {
+      if (typeof window === 'undefined') return;
+
+      // Check for error parameters in search query or URL hash (e.g., otp_expired)
+      const searchParams = new URLSearchParams(window.location.search);
+      const hash = window.location.hash.startsWith('#') ? window.location.hash.substring(1) : window.location.hash;
+      const hashParams = new URLSearchParams(hash);
+
+      const errorParam = searchParams.get('error') || hashParams.get('error');
+      const errorDescription = searchParams.get('error_description') || hashParams.get('error_description');
+
+      if (errorParam || errorDescription) {
+        if (isMounted) {
+          setStatus('expired');
+          setErrorNotice(
+            errorDescription?.replace(/\+/g, ' ') ||
+            'This password recovery link has expired or is invalid. Please request a new link.'
+          );
+        }
+        return;
+      }
+
+      // Check for PKCE exchange code in URL search parameters
+      const code = searchParams.get('code');
+      if (code) {
+        try {
+          const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+          if (!isMounted) return;
+
+          if (error) {
+            console.warn('Recovery code exchange note:', error.message);
+            setStatus('expired');
+            setErrorNotice('This password reset link has expired or has already been used. Please request a new link.');
+            return;
+          }
+
+          if (data?.session) {
+            // Clean up URL parameters to prevent re-exchange on browser refresh
+            window.history.replaceState(null, '', '/reset-password');
+            setStatus('ready');
+            return;
+          }
+        } catch (err: any) {
+          if (isMounted) {
+            setStatus('expired');
+            setErrorNotice(err?.message || 'Failed to establish recovery session.');
+          }
+          return;
+        }
+      }
+
+      // Check if a session is already established (e.g. implicit grant hash parsed by client)
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!isMounted) return;
+
+      if (session) {
+        setStatus('ready');
+        if (window.location.hash) {
+          window.history.replaceState(null, '', '/reset-password');
+        }
+        return;
+      }
+
+      // Listen for incoming auth event (e.g. PASSWORD_RECOVERY emitted by Supabase)
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((event, eventSession) => {
+        if (!isMounted) return;
+        if (event === 'PASSWORD_RECOVERY' || (eventSession && event === 'SIGNED_IN')) {
+          setStatus('ready');
+          subscription.unsubscribe();
+        }
+      });
+
+      // Safety fallback: If after 2 seconds no recovery session was detected, show expired state
+      const timer = setTimeout(async () => {
+        if (!isMounted) return;
+        const { data: { session: recheck } } = await supabase.auth.getSession();
+        if (recheck) {
+          setStatus('ready');
+        } else {
+          setStatus('expired');
+          setErrorNotice('No active password recovery session found. Reset links are single-use and expire after a short time.');
+        }
+      }, 2000);
+
+      return () => {
+        subscription.unsubscribe();
+        clearTimeout(timer);
+      };
+    };
+
+    verifyRecoveryState();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [setIsPasswordRecovery]);
+
+  // 3. Handle password update submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
+    setSubmitError(null);
 
-    if (!newPassword || newPassword.length < 6) {
-      setError('Password must be at least 6 characters.');
+    if (newPassword.length < 8) {
+      setSubmitError('Password must be at least 8 characters long.');
       return;
     }
+
+    if (!/[0-9!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(newPassword)) {
+      setSubmitError('Password must contain at least one number or special character.');
+      return;
+    }
+
     if (newPassword !== confirmPassword) {
-      setError('Passwords do not match.');
+      setSubmitError('Passwords do not match. Please verify both inputs.');
       return;
     }
 
     setIsSubmitting(true);
     try {
-      const { error: updateError } = await supabase.auth.updateUser({
+      const { error } = await supabase.auth.updateUser({
         password: newPassword,
       });
 
-      if (updateError) {
-        setError(updateError.message);
-      } else {
-        setIsSuccess(true);
-        showToast('Password updated successfully! You can now sign in.');
-        setTimeout(() => {
-          setCurrentScreen('login');
-        }, 1500);
+      if (error) {
+        setSubmitError(error.message);
+        setIsSubmitting(false);
+        return;
       }
+
+      // Deactivate recovery flag
+      setIsPasswordRecovery(false);
+
+      // Cleanly sign out temporary recovery session so member signs in fresh with new password
+      try {
+        await supabase.auth.signOut();
+      } catch {
+        // Ignored
+      }
+
+      setStatus('success');
+      showToast('Password updated successfully! Please sign in with your new credentials.');
     } catch (err: any) {
-      setError(err?.message || 'Failed to update password.');
-    } finally {
+      setSubmitError(err?.message || 'An unexpected error occurred while updating your password.');
       setIsSubmitting(false);
     }
   };
@@ -79,11 +219,11 @@ export const ResetPasswordPage: React.FC = () => {
       {/* Subtle glass contour grid */}
       <div 
         className="absolute inset-0 bg-[linear-gradient(to_right,rgba(52,211,153,0.05)_1px,transparent_1px),linear-gradient(to_bottom,rgba(52,211,153,0.05)_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_70%_60%_at_50%_45%,#000_65%,transparent_100%)] pointer-events-none -z-10"
-        aria-hidden="true"
+        aria-hidden="true" 
       />
 
       {/* Glassmorphic Container */}
-      <div className="relative w-full max-w-[420px] rounded-3xl sm:rounded-[32px] bg-[#064e3b]/55 backdrop-blur-2xl border border-emerald-400/30 shadow-[0_24px_60px_rgba(1,26,20,0.85),inset_0_1px_1px_rgba(255,255,255,0.25),inset_0_0_30px_rgba(16,185,129,0.08)] p-6 sm:p-9 space-y-6 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+      <div className="relative w-full max-w-[440px] rounded-3xl sm:rounded-[32px] bg-[#064e3b]/55 backdrop-blur-2xl border border-emerald-400/30 shadow-[0_24px_60px_rgba(1,26,20,0.85),inset_0_1px_1px_rgba(255,255,255,0.25),inset_0_0_30px_rgba(16,185,129,0.08)] p-6 sm:p-9 space-y-6 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
         
         {/* Top specular sheen */}
         <div 
@@ -106,79 +246,243 @@ export const ResetPasswordPage: React.FC = () => {
               NARIVO
             </span>
           </button>
-
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight font-heading">
-            Set New Password
-          </h1>
-          <p className="text-xs text-slate-200 leading-relaxed max-w-xs">
-            Create a secure new password for your NARIVO member account.
-          </p>
         </div>
 
-        {/* Error Alert Box */}
-        {error && (
-          <div className="p-3.5 bg-rose-500/15 rounded-xl border border-rose-500/35 text-xs text-rose-200 flex items-start gap-2.5">
-            <AlertCircle className="w-4 h-4 text-rose-300 shrink-0 mt-0.5" />
-            <span className="leading-relaxed font-medium">{error}</span>
-          </div>
-        )}
-
-        {/* Success Confirmation Box */}
-        {isSuccess ? (
-          <div className="space-y-4 text-center py-2">
-            <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 flex items-center justify-center mx-auto shadow-md">
-              <CheckCircle2 className="w-7 h-7 text-emerald-300" />
+        {/* STATE 1: VERIFYING RECOVERY SESSION */}
+        {status === 'verifying' && (
+          <div className="text-center py-6 space-y-4">
+            <div className="w-14 h-14 rounded-2xl bg-emerald-500/15 border border-emerald-400/30 text-emerald-300 flex items-center justify-center mx-auto">
+              <RotateCw className="w-7 h-7 text-emerald-400 animate-spin" />
             </div>
-
             <div className="space-y-1.5">
-              <h2 className="text-lg font-bold text-white font-heading">
-                Password Updated!
-              </h2>
-              <p className="text-xs text-slate-200 leading-relaxed">
-                Your password has been changed successfully. Redirecting you to sign in...
+              <h1 className="text-xl font-bold text-white font-heading">
+                Verifying Reset Link
+              </h1>
+              <p className="text-xs text-slate-300 leading-relaxed max-w-xs mx-auto">
+                Validating your cryptographic recovery session with Supabase Auth...
               </p>
             </div>
           </div>
-        ) : (
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <Input
-              label="New Password"
-              type="password"
-              required
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              placeholder="Min. 6 characters"
-              leftIcon={<Lock className="w-4 h-4 text-emerald-300/70" />}
-              autoComplete="new-password"
-            />
-
-            <Input
-              label="Confirm New Password"
-              type="password"
-              required
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              placeholder="Re-enter your new password"
-              leftIcon={<Lock className="w-4 h-4 text-emerald-300/70" />}
-              autoComplete="new-password"
-            />
-
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="w-full h-12 rounded-2xl bg-gradient-to-r from-emerald-400 via-emerald-500 to-teal-400 hover:from-emerald-300 hover:to-teal-300 text-slate-950 font-extrabold text-sm shadow-[0_10px_24px_rgba(16,185,129,0.35)] hover:shadow-[0_14px_30px_rgba(16,185,129,0.48)] active:scale-[0.99] transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed mt-2"
-            >
-              {isSubmitting ? (
-                <span>Updating Password...</span>
-              ) : (
-                <>
-                  <span>Save New Password</span>
-                  <ArrowRight className="w-4 h-4 text-slate-950" />
-                </>
-              )}
-            </button>
-          </form>
         )}
+
+        {/* STATE 2: LINK EXPIRED OR INVALID */}
+        {status === 'expired' && (
+          <div className="text-center py-3 space-y-5">
+            <div className="w-14 h-14 rounded-2xl bg-rose-500/20 border border-rose-500/40 text-rose-300 flex items-center justify-center mx-auto shadow-md">
+              <ShieldAlert className="w-8 h-8 text-rose-300" />
+            </div>
+
+            <div className="space-y-2">
+              <h1 className="text-xl font-bold text-white font-heading">
+                Reset Link Expired or Invalid
+              </h1>
+              <p className="text-xs text-slate-300 leading-relaxed">
+                {errorNotice || 'This password reset link is invalid or has already expired. Password reset links are single-use and expire after 1 hour.'}
+              </p>
+            </div>
+
+            <div className="space-y-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => setCurrentScreen('forgot-password')}
+                className="w-full h-12 rounded-2xl bg-gradient-to-r from-emerald-400 via-emerald-500 to-teal-400 hover:from-emerald-300 hover:to-teal-300 text-slate-950 font-extrabold text-xs sm:text-sm shadow-[0_10px_24px_rgba(16,185,129,0.35)] active:scale-[0.99] transition-all cursor-pointer flex items-center justify-center gap-2"
+              >
+                <span>Request New Reset Link</span>
+                <ArrowRight className="w-4 h-4 text-slate-950" />
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setCurrentScreen('login')}
+                className="w-full h-11 rounded-2xl bg-white/[0.08] hover:bg-white/[0.12] border border-white/10 text-white font-semibold text-xs transition-colors cursor-pointer"
+              >
+                Return to Sign In
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* STATE 3: READY TO SET NEW PASSWORD */}
+        {status === 'ready' && (
+          <div className="space-y-5">
+            <div className="text-center space-y-1">
+              <h1 className="text-2xl font-extrabold text-white tracking-tight font-heading">
+                Create New Password
+              </h1>
+              <p className="text-xs text-slate-200 leading-relaxed">
+                Enter your new password below to regain access to your NARIVO account.
+              </p>
+            </div>
+
+            {submitError && (
+              <div className="p-3.5 bg-rose-500/15 rounded-xl border border-rose-500/35 text-xs text-rose-200 flex items-start gap-2.5 animate-in fade-in duration-150">
+                <AlertCircle className="w-4 h-4 text-rose-300 shrink-0 mt-0.5" />
+                <span className="leading-relaxed font-medium">{submitError}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {/* New Password Input */}
+              <div className="space-y-1.5">
+                <label className="block text-xs font-semibold text-slate-200">
+                  New Password
+                </label>
+                <div className="relative flex items-center">
+                  <div className="absolute left-3.5 pointer-events-none text-emerald-300/70 flex items-center">
+                    <Lock className="w-4 h-4" />
+                  </div>
+                  <input
+                    type={showNewPassword ? 'text' : 'password'}
+                    required
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="Min. 8 characters"
+                    autoComplete="new-password"
+                    autoFocus
+                    className="w-full h-11 pl-10 pr-10 rounded-xl bg-black/40 border border-white/[0.1] text-xs text-white placeholder:text-slate-500 transition-all outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowNewPassword(!showNewPassword)}
+                    className="absolute right-3 p-1 text-slate-400 hover:text-white transition-colors cursor-pointer"
+                    aria-label={showNewPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              {/* Confirm Password Input */}
+              <div className="space-y-1.5">
+                <label className="block text-xs font-semibold text-slate-200">
+                  Confirm New Password
+                </label>
+                <div className="relative flex items-center">
+                  <div className="absolute left-3.5 pointer-events-none text-emerald-300/70 flex items-center">
+                    <Lock className="w-4 h-4" />
+                  </div>
+                  <input
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    required
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="Re-enter your new password"
+                    autoComplete="new-password"
+                    className="w-full h-11 pl-10 pr-10 rounded-xl bg-black/40 border border-white/[0.1] text-xs text-white placeholder:text-slate-500 transition-all outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-3 p-1 text-slate-400 hover:text-white transition-colors cursor-pointer"
+                    aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              {/* Password Strength Requirements Card */}
+              <div className="p-3 rounded-xl bg-black/30 border border-white/[0.08] space-y-1.5 text-[11px]">
+                <span className="text-[10px] text-slate-400 uppercase font-mono tracking-wider block">
+                  Password Requirements
+                </span>
+                
+                <div className="flex items-center gap-2">
+                  {hasMinLength ? (
+                    <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                  ) : (
+                    <Circle className="w-2.5 h-2.5 text-slate-500 shrink-0 ml-0.5 mr-0.5" />
+                  )}
+                  <span className={hasMinLength ? 'text-emerald-300 font-medium' : 'text-slate-400'}>
+                    At least 8 characters
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  {hasNumberOrSymbol ? (
+                    <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                  ) : (
+                    <Circle className="w-2.5 h-2.5 text-slate-500 shrink-0 ml-0.5 mr-0.5" />
+                  )}
+                  <span className={hasNumberOrSymbol ? 'text-emerald-300 font-medium' : 'text-slate-400'}>
+                    Contains at least one number or special symbol
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  {passwordsMatch ? (
+                    <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                  ) : (
+                    <Circle className="w-2.5 h-2.5 text-slate-500 shrink-0 ml-0.5 mr-0.5" />
+                  )}
+                  <span className={passwordsMatch ? 'text-emerald-300 font-medium' : 'text-slate-400'}>
+                    Passwords match
+                  </span>
+                </div>
+              </div>
+
+              {/* Submit Button */}
+              <button
+                type="submit"
+                disabled={isSubmitting || !isFormValid}
+                className="w-full h-12 rounded-2xl bg-gradient-to-r from-emerald-400 via-emerald-500 to-teal-400 hover:from-emerald-300 hover:to-teal-300 text-slate-950 font-extrabold text-sm shadow-[0_10px_24px_rgba(16,185,129,0.35)] hover:shadow-[0_14px_30px_rgba(16,185,129,0.48)] active:scale-[0.99] transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed mt-3"
+              >
+                {isSubmitting ? (
+                  <span className="flex items-center gap-2">
+                    <RotateCw className="w-4 h-4 animate-spin text-slate-950" />
+                    <span>Updating Password...</span>
+                  </span>
+                ) : (
+                  <>
+                    <span>Reset Password</span>
+                    <ArrowRight className="w-4 h-4 text-slate-950" />
+                  </>
+                )}
+              </button>
+
+              <div className="pt-2 text-center">
+                <button
+                  type="button"
+                  onClick={() => setCurrentScreen('login')}
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-300 hover:text-emerald-200 transition-colors cursor-pointer"
+                >
+                  <ArrowLeft className="w-3.5 h-3.5" />
+                  <span>Cancel and Return to Sign In</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+
+        {/* STATE 4: SUCCESS CONFIRMATION */}
+        {status === 'success' && (
+          <div className="text-center py-4 space-y-5 animate-in fade-in zoom-in-95 duration-200">
+            <div className="w-14 h-14 rounded-2xl bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 flex items-center justify-center mx-auto shadow-md">
+              <CheckCircle2 className="w-8 h-8 text-emerald-300" />
+            </div>
+
+            <div className="space-y-2">
+              <h1 className="text-2xl font-black text-white font-heading">
+                Password Reset Complete!
+              </h1>
+              <p className="text-xs text-slate-200 leading-relaxed max-w-xs mx-auto">
+                Your NARIVO account password has been updated successfully. You can now sign in using your new password.
+              </p>
+            </div>
+
+            <div className="pt-2">
+              <button
+                type="button"
+                onClick={() => setCurrentScreen('login')}
+                className="w-full h-12 rounded-2xl bg-gradient-to-r from-emerald-400 via-emerald-500 to-teal-400 hover:from-emerald-300 hover:to-teal-300 text-slate-950 font-extrabold text-sm shadow-[0_10px_24px_rgba(16,185,129,0.35)] active:scale-[0.99] transition-all cursor-pointer flex items-center justify-center gap-2"
+              >
+                <span>Sign In with New Password</span>
+                <ArrowRight className="w-4 h-4 text-slate-950" />
+              </button>
+            </div>
+          </div>
+        )}
+
       </div>
     </div>
   );

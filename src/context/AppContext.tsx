@@ -101,6 +101,8 @@ interface AppContextType {
   isAdmin: boolean;
   isEmailVerified: boolean;
   isSupabaseConfigured: boolean;
+  isPasswordRecovery: boolean;
+  setIsPasswordRecovery: (isRecovery: boolean) => void;
   
   // Database Models
   dbProfile: DatabaseProfile | null;
@@ -230,13 +232,38 @@ const mapSupabaseDataToProfile = (
 export const PROTECTED_SCREENS: ScreenType[] = ['dashboard', 'tasks', 'wallet', 'referrals', 'profile', 'membership', 'admin'];
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [isPasswordRecovery, setIsPasswordRecovery] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      const pathname = window.location.pathname;
+      const search = window.location.search;
+      const hash = window.location.hash;
+      return (
+        pathname === '/reset-password' ||
+        pathname.startsWith('/reset-password') ||
+        search.includes('type=recovery') ||
+        hash.includes('type=recovery')
+      );
+    }
+    return false;
+  });
+
   const [currentScreen, setCurrentScreenState] = useState<ScreenType>(() => {
     if (typeof window !== 'undefined') {
       const pathname = window.location.pathname;
       const search = window.location.search;
       const hash = window.location.hash;
 
-      // If URL contains OAuth callback parameters (e.g. redirected to / with code or hash tokens), route to auth-callback
+      // 1. Password reset flow takes priority: if visiting /reset-password or URL has type=recovery
+      if (
+        pathname === '/reset-password' || 
+        pathname.startsWith('/reset-password') ||
+        search.includes('type=recovery') || 
+        hash.includes('type=recovery')
+      ) {
+        return 'reset-password';
+      }
+
+      // 2. If URL contains OAuth callback parameters (e.g. redirected to / with code or hash tokens), route to auth-callback
       if ((search.includes('code=') || hash.includes('access_token=') || search.includes('error=')) && pathname !== '/auth/callback') {
         return 'auth-callback';
       }
@@ -845,7 +872,40 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (!isMounted) return;
 
+      // 1. Explicitly handle PASSWORD_RECOVERY event
+      if (event === 'PASSWORD_RECOVERY') {
+        setIsPasswordRecovery(true);
+        if (session?.user) {
+          setSupabaseUser(session.user);
+          setUser(mapSupabaseDataToProfile(session.user));
+        }
+        setAuthLoading(false);
+        setCurrentScreenState('reset-password');
+        if (typeof window !== 'undefined' && window.location.pathname !== '/reset-password') {
+          window.history.replaceState(null, '', '/reset-password');
+        }
+        return;
+      }
+
+      // 2. Standard authentication events
       if (event === 'SIGNED_IN' || event === 'USER_UPDATED' || event === 'TOKEN_REFRESHED') {
+        // If current flow is password recovery or URL is /reset-password, do not trigger member dashboard hydration or navigation
+        const isRecoveryUrl = typeof window !== 'undefined' && (
+          window.location.pathname === '/reset-password' ||
+          window.location.search.includes('type=recovery') ||
+          window.location.hash.includes('type=recovery')
+        );
+
+        if (isPasswordRecovery || isRecoveryUrl) {
+          setIsPasswordRecovery(true);
+          if (session?.user) {
+            setSupabaseUser(session.user);
+            setUser((prev) => (prev && prev.id === session.user.id ? prev : mapSupabaseDataToProfile(session.user)));
+          }
+          setAuthLoading(false);
+          return;
+        }
+
         if (session?.user) {
           setIsAuthenticated(true);
           setSupabaseUser(session.user);
@@ -950,6 +1010,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Automatically redirect authenticated users visiting public entry screens (/login, /register, /auth/callback, /) directly to /dashboard
   useEffect(() => {
+    // Crucial: Never redirect to dashboard during password recovery or while on reset-password
+    if (isPasswordRecovery || currentScreen === 'reset-password') {
+      return;
+    }
+
     if (!authLoading && isAuthenticated && (
       currentScreen === 'login' || 
       currentScreen === 'register' || 
@@ -964,7 +1029,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
       }
     }
-  }, [authLoading, isAuthenticated, currentScreen]);
+  }, [authLoading, isAuthenticated, currentScreen, isPasswordRecovery]);
 
   // AUTH ACTIONS
   // =========================================================================
@@ -1135,8 +1200,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return { success: false, error: 'Supabase is not configured.' };
     }
     try {
+      // Explicit redirect destination for password recovery
+      const isDev = typeof window !== 'undefined' && 
+        (window.location.hostname.includes('localhost') || window.location.hostname.includes('run.app'));
+      
+      const redirectTo = isDev
+        ? `${window.location.origin}/reset-password`
+        : 'https://narivo.site/reset-password';
+
       const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-        redirectTo: typeof window !== 'undefined' ? `${window.location.origin}` : undefined,
+        redirectTo,
       });
       if (error) {
         return { success: false, error: error.message };
@@ -1338,6 +1411,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         isAdmin,
         isEmailVerified,
         isSupabaseConfigured,
+        isPasswordRecovery,
+        setIsPasswordRecovery,
         dbProfile,
         activeMembership,
         isMembershipActive: isUserMembershipActive,

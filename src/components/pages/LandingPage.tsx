@@ -27,18 +27,28 @@ const TelegramPlaneIcon: React.FC<{ className?: string }> = ({ className = "w-5 
 );
 
 export const LandingPage: React.FC = () => {
-  const { setCurrentScreen, isAuthenticated } = useApp();
+  const { setCurrentScreen, isAuthenticated, isPasswordRecovery } = useApp();
   const [showTelegramNotice, setShowTelegramNotice] = useState(false);
 
-  // Automatically redirect authenticated members directly to Dashboard
+  // Automatically redirect authenticated members directly to Dashboard (unless in password recovery)
   useEffect(() => {
-    if (isAuthenticated) {
+    if (isAuthenticated && !isPasswordRecovery) {
+      // Check if URL search/hash contains password recovery tokens
+      if (typeof window !== 'undefined') {
+        const isRecovery = window.location.search.includes('type=recovery') || 
+                           window.location.hash.includes('type=recovery');
+        if (isRecovery) {
+          setCurrentScreen('reset-password');
+          return;
+        }
+      }
+
       setCurrentScreen('dashboard');
       if (typeof window !== 'undefined') {
         window.history.replaceState(null, '', SCREEN_ROUTES['dashboard']);
       }
     }
-  }, [isAuthenticated, setCurrentScreen]);
+  }, [isAuthenticated, isPasswordRecovery, setCurrentScreen]);
 
   // Exact SEO configuration preserved with canonical mapping
   usePageSeo({
