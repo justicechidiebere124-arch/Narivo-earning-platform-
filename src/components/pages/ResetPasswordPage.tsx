@@ -192,7 +192,10 @@ export const ResetPasswordPage: React.FC = () => {
       }
 
       setStatus('success');
-      showToast('Password updated successfully! Please sign in with your new credentials.');
+      showToast('Password updated successfully! Redirecting to sign in...');
+      setTimeout(() => {
+        setCurrentScreen('login');
+      }, 2500);
     } catch (err: any) {
       setSubmitError(err?.message || 'An unexpected error occurred while updating your password.');
       setIsSubmitting(false);

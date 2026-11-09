@@ -6,14 +6,12 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { usePageSeo } from '../../hooks/usePageSeo';
-import { Input, Modal, GoogleLogo } from '../ui';
+import { Input, GoogleLogo } from '../ui';
 import { 
   Lock, 
   Mail, 
   ArrowRight, 
   AlertCircle, 
-  CheckCircle2,
-  Send,
   Loader2
 } from 'lucide-react';
 
@@ -26,7 +24,6 @@ export const LoginPage: React.FC = () => {
     isPasswordRecovery,
     setCurrentScreen, 
     showToast, 
-    resetPassword, 
     resendVerificationEmail 
   } = useApp();
   const [email, setEmail] = useState('');
@@ -41,12 +38,6 @@ export const LoginPage: React.FC = () => {
       setCurrentScreen('dashboard');
     }
   }, [isAuthenticated, authLoading, isPasswordRecovery, setCurrentScreen]);
-
-  // Password reset modal state
-  const [showResetModal, setShowResetModal] = useState(false);
-  const [resetEmail, setResetEmail] = useState('');
-  const [resetSubmitting, setResetSubmitting] = useState(false);
-  const [resetStatus, setResetStatus] = useState<{ success: boolean; message: string } | null>(null);
 
   // Email verification resend prompt state
   const [showResendPrompt, setShowResendPrompt] = useState(false);
@@ -103,34 +94,6 @@ export const LoginPage: React.FC = () => {
     }
   };
 
-  const handlePasswordResetSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setResetStatus(null);
-
-    if (!resetEmail.trim() || !resetEmail.includes('@')) {
-      setResetStatus({ success: false, message: 'Please enter a valid email address.' });
-      return;
-    }
-
-    setResetSubmitting(true);
-    try {
-      const res = await resetPassword(resetEmail);
-      if (res.success) {
-        setResetStatus({ 
-          success: true, 
-          message: 'Password reset link sent! Please check your email inbox.' 
-        });
-        showToast('Password reset email sent successfully.');
-      } else {
-        setResetStatus({ 
-          success: false, 
-          message: res.error || 'Unable to send reset email. Verify your email address.' 
-        });
-      }
-    } finally {
-      setResetSubmitting(false);
-    }
-  };
 
   const handleResend = async () => {
     if (!email) return;
@@ -274,13 +237,16 @@ export const LoginPage: React.FC = () => {
               <label className="block text-xs font-semibold text-slate-200">
                 Password
               </label>
-              <button
-                type="button"
-                onClick={() => setCurrentScreen('forgot-password')}
+              <a
+                href="/forgot-password"
+                onClick={(e) => {
+                  e.preventDefault();
+                  setCurrentScreen('forgot-password');
+                }}
                 className="text-xs font-semibold text-emerald-300 hover:text-emerald-200 transition-colors cursor-pointer"
               >
                 Forgot Password?
-              </button>
+              </a>
             </div>
             <Input
               type="password"
@@ -321,69 +287,6 @@ export const LoginPage: React.FC = () => {
           </button>
         </p>
       </div>
-
-      {/* Forgot Password Modal */}
-      <Modal
-        isOpen={showResetModal}
-        onClose={() => setShowResetModal(false)}
-        title="Reset Your Password"
-        description="Enter your registered email address to receive a secure reset link."
-        size="sm"
-      >
-        <div className="space-y-4">
-          {resetStatus && (
-            <div className={`p-3 rounded-xl text-xs flex items-start gap-2 ${
-              resetStatus.success 
-                ? 'bg-emerald-500/15 border border-emerald-500/30 text-emerald-200' 
-                : 'bg-rose-500/15 border border-rose-500/30 text-rose-200'
-            }`}>
-              {resetStatus.success ? (
-                <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5 text-emerald-300" />
-              ) : (
-                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-300" />
-              )}
-              <span className="leading-relaxed">{resetStatus.message}</span>
-            </div>
-          )}
-
-          <form onSubmit={handlePasswordResetSubmit} className="space-y-4">
-            <Input
-              label="Registered Email"
-              type="email"
-              required
-              value={resetEmail}
-              onChange={(e) => setResetEmail(e.target.value)}
-              placeholder="registered@email.com"
-              leftIcon={<Mail className="w-4 h-4 text-emerald-300/70" />}
-              autoFocus
-            />
-
-            <div className="flex items-center gap-3 pt-1">
-              <button
-                type="button"
-                onClick={() => setShowResetModal(false)}
-                className="flex-1 h-11 rounded-xl bg-white/[0.08] hover:bg-white/[0.12] border border-white/10 text-white font-semibold text-xs transition-colors cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={resetSubmitting}
-                className="flex-1 h-11 rounded-xl bg-gradient-to-r from-emerald-400 via-emerald-500 to-teal-400 hover:from-emerald-300 hover:to-teal-300 text-slate-950 font-bold text-xs shadow-md transition-all cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-60"
-              >
-                {resetSubmitting ? (
-                  <span>Sending...</span>
-                ) : (
-                  <>
-                    <span>Send Link</span>
-                    <Send className="w-3.5 h-3.5" />
-                  </>
-                )}
-              </button>
-            </div>
-          </form>
-        </div>
-      </Modal>
     </div>
   );
 };

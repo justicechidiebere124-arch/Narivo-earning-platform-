@@ -39,15 +39,16 @@ export const ForgotPasswordPage: React.FC = () => {
         showToast('Password recovery instructions sent.');
       } else if (res.error && res.error.toLowerCase().includes('rate limit')) {
         setError('Too many reset requests. Please wait a few minutes before trying again.');
+      } else if (res.error && (res.error.toLowerCase().includes('invalid') || res.error.toLowerCase().includes('network') || res.error.toLowerCase().includes('failed'))) {
+        setError(res.error);
       } else {
-        // Anti-enumeration: Confirm email dispatch without revealing whether user exists
         setIsSent(true);
       }
     } catch (err: any) {
       if (err?.message?.toLowerCase().includes('rate limit')) {
         setError('Too many reset requests. Please wait a few minutes before trying again.');
       } else {
-        setIsSent(true);
+        setError(err?.message || 'Unable to send recovery email. Please check your connection and try again.');
       }
     } finally {
       setIsSubmitting(false);
