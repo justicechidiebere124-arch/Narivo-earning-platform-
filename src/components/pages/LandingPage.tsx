@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp, SCREEN_ROUTES, ScreenType } from '../../context/AppContext';
 import { usePageSeo } from '../../hooks/usePageSeo';
 import { SUPPORT_CONFIG } from '../../config/support';
@@ -30,6 +30,16 @@ export const LandingPage: React.FC = () => {
   const { setCurrentScreen, isAuthenticated } = useApp();
   const [showTelegramNotice, setShowTelegramNotice] = useState(false);
 
+  // Automatically redirect authenticated members directly to Dashboard
+  useEffect(() => {
+    if (isAuthenticated) {
+      setCurrentScreen('dashboard');
+      if (typeof window !== 'undefined') {
+        window.history.replaceState(null, '', SCREEN_ROUTES['dashboard']);
+      }
+    }
+  }, [isAuthenticated, setCurrentScreen]);
+
   // Exact SEO configuration preserved with canonical mapping
   usePageSeo({
     title: 'NARIVO – Nigerian Sponsored Tasks and Digital Opportunities Platform',
@@ -48,6 +58,11 @@ export const LandingPage: React.FC = () => {
   const isTelegramConfigured = Boolean(
     SUPPORT_CONFIG.isTelegramConfigured && SUPPORT_CONFIG.telegramCommunityUrl?.trim()
   );
+
+  // Never flash intermediate options for authenticated members
+  if (isAuthenticated) {
+    return null;
+  }
 
   return (
     <div className="relative min-h-screen flex flex-col justify-between overflow-hidden px-4 sm:px-6 lg:px-8 py-8 sm:py-12 bg-[radial-gradient(ellipse_130%_90%_at_50%_-15%,#065f46_0%,#044e39_25%,#033a2b_50%,#022c22_75%,#011f18_100%)] selection:bg-emerald-400 selection:text-slate-950">

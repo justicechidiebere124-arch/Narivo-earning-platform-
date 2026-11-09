@@ -60,9 +60,7 @@ export const AuthCallbackPage: React.FC = () => {
       }
 
       // 4. Redirect immediately to member dashboard
-      setTimeout(() => {
-        setCurrentScreen('dashboard');
-      }, 300);
+      setCurrentScreen('dashboard');
     },
     [ensureUserProfile, setCurrentScreen, showToast]
   );

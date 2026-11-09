@@ -69,6 +69,9 @@ export const SCREEN_ROUTES: Record<ScreenType, string> = {
 
 export const getScreenFromPathname = (pathname: string): ScreenType => {
   const normalized = pathname.replace(/\/$/, '') || '/';
+  if (normalized === '/callback' || normalized === '/auth/v1/callback') {
+    return 'auth-callback';
+  }
   for (const [screen, path] of Object.entries(SCREEN_ROUTES)) {
     if (path === normalized && screen !== 'not-found') {
       return screen as ScreenType;
@@ -222,7 +225,16 @@ export const PROTECTED_SCREENS: ScreenType[] = ['dashboard', 'tasks', 'wallet', 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentScreen, setCurrentScreenState] = useState<ScreenType>(() => {
     if (typeof window !== 'undefined') {
-      return getScreenFromPathname(window.location.pathname);
+      const pathname = window.location.pathname;
+      const search = window.location.search;
+      const hash = window.location.hash;
+
+      // If URL contains OAuth callback parameters (e.g. redirected to / with code or hash tokens), route to auth-callback
+      if ((search.includes('code=') || hash.includes('access_token=') || search.includes('error=')) && pathname !== '/auth/callback') {
+        return 'auth-callback';
+      }
+
+      return getScreenFromPathname(pathname);
     }
     return 'landing';
   });
@@ -912,9 +924,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, [authLoading, isAuthenticated, currentScreen]);
 
-  // Automatically redirect authenticated users visiting /login, /register, or /auth/callback to /dashboard
+  // Automatically redirect authenticated users visiting public entry screens (/login, /register, /auth/callback, /) directly to /dashboard
   useEffect(() => {
-    if (!authLoading && isAuthenticated && (currentScreen === 'login' || currentScreen === 'register' || currentScreen === 'auth-callback')) {
+    if (!authLoading && isAuthenticated && (
+      currentScreen === 'login' || 
+      currentScreen === 'register' || 
+      currentScreen === 'auth-callback' || 
+      currentScreen === 'landing'
+    )) {
       setCurrentScreenState('dashboard');
       if (typeof window !== 'undefined') {
         const path = SCREEN_ROUTES['dashboard'];
