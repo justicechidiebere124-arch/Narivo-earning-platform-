@@ -3,17 +3,22 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useApp } from '../../context/AppContext';
 import { usePageSeo } from '../../hooks/usePageSeo';
 import { supabase } from '../../lib/supabase';
 import { GoogleLogo } from '../ui';
-import { AlertCircle, CheckCircle2, ArrowRight, Loader2 } from 'lucide-react';
+import { AlertCircle, CheckCircle2, ArrowRight } from 'lucide-react';
+import type { User as SupabaseAuthUser } from '@supabase/supabase-js';
 
 export const AuthCallbackPage: React.FC = () => {
-  const { setCurrentScreen, ensureUserProfile, showToast } = useApp();
+  const { setCurrentScreen, ensureUserProfile, showToast, isAuthenticated } = useApp();
   const [status, setStatus] = useState<'verifying' | 'success' | 'error'>('verifying');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isCheckingManual, setIsCheckingManual] = useState(false);
+
+  const hasProcessedRef = useRef(false);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   usePageSeo({
     title: 'Authenticating with Google – NARIVO',
@@ -21,10 +26,86 @@ export const AuthCallbackPage: React.FC = () => {
     canonicalPath: '/auth/callback',
   });
 
-  useEffect(() => {
-    let isCancelled = false;
+  const completeSuccess = useCallback(
+    (authUser: SupabaseAuthUser) => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
 
-    const processAuthCallback = async () => {
+      setStatus('success');
+      showToast('Signed in with Google successfully!');
+
+      // 1. Immediately clean up the URL to prevent duplicate PKCE exchange or stale code on refresh
+      if (typeof window !== 'undefined') {
+        window.history.replaceState(null, '', '/dashboard');
+      }
+
+      // 2. Dispatch profile synchronization safely in background (NEVER blocks navigation)
+      ensureUserProfile(authUser).catch((err) => {
+        console.warn('Background profile sync notice in callback:', err);
+      });
+
+      // 3. Handle popup opener if opened from within an iframe
+      if (typeof window !== 'undefined' && window.opener && window.opener !== window) {
+        try {
+          window.opener.postMessage({ type: 'NARIVO_OAUTH_SUCCESS', userId: authUser.id }, '*');
+          setTimeout(() => {
+            window.close();
+          }, 400);
+          return;
+        } catch (postErr) {
+          console.warn('Failed to notify popup opener:', postErr);
+        }
+      }
+
+      // 4. Redirect immediately to member dashboard
+      setTimeout(() => {
+        setCurrentScreen('dashboard');
+      }, 300);
+    },
+    [ensureUserProfile, setCurrentScreen, showToast]
+  );
+
+  useEffect(() => {
+    // If the user is already authenticated when this component mounts, redirect immediately
+    if (isAuthenticated) {
+      if (typeof window !== 'undefined') {
+        window.history.replaceState(null, '', '/dashboard');
+      }
+      setStatus('success');
+      setCurrentScreen('dashboard');
+      return;
+    }
+
+    if (hasProcessedRef.current) return;
+    hasProcessedRef.current = true;
+
+    let isSubscribed = true;
+
+    // Safety timeout: Never allow indefinite spinning. Cap at 6 seconds maximum.
+    timeoutRef.current = setTimeout(async () => {
+      if (!isSubscribed) return;
+
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          completeSuccess(session.user);
+          return;
+        }
+      } catch {
+        // Fall through to error
+      }
+
+      if (isSubscribed) {
+        setStatus('error');
+        setErrorMessage(
+          'Google authentication took longer than expected. If your sign-in was approved, you can proceed directly to your dashboard.'
+        );
+      }
+    }, 6000);
+
+    const processAuth = async () => {
       try {
         if (typeof window === 'undefined') return;
 
@@ -33,9 +114,10 @@ export const AuthCallbackPage: React.FC = () => {
         const error = currentUrl.searchParams.get('error');
         const errorDescription = currentUrl.searchParams.get('error_description');
 
-        // 1. Check if OAuth provider returned an explicit error (e.g. user cancelled)
+        // Check for error parameters from OAuth provider
         if (error || errorDescription) {
-          if (!isCancelled) {
+          if (timeoutRef.current) clearTimeout(timeoutRef.current);
+          if (isSubscribed) {
             setStatus('error');
             setErrorMessage(
               errorDescription || error || 'Google sign-in was cancelled or access was denied.'
@@ -44,91 +126,96 @@ export const AuthCallbackPage: React.FC = () => {
           return;
         }
 
-        // 2. Exchange PKCE code for authenticated session if code parameter is present
-        let authenticatedUser = null;
+        // Strategy A: Check if a valid session already exists (e.g. detectSessionInUrl already processed it)
+        const { data: initialSession } = await supabase.auth.getSession();
+        if (initialSession?.session?.user && isSubscribed) {
+          completeSuccess(initialSession.session.user);
+          return;
+        }
+
+        // Strategy B: If PKCE code exists in URL search params, exchange it
+        let authUser: SupabaseAuthUser | null = null;
 
         if (code) {
           try {
             const { data, error: exchangeErr } = await supabase.auth.exchangeCodeForSession(code);
             if (!exchangeErr && data?.session?.user) {
-              authenticatedUser = data.session.user;
+              authUser = data.session.user;
             } else if (exchangeErr) {
-              console.warn('PKCE code exchange notice:', exchangeErr.message);
+              console.warn('PKCE exchange notice (may have been handled by client):', exchangeErr.message);
             }
           } catch (codeErr) {
-            console.warn('exchangeCodeForSession exception:', codeErr);
+            console.warn('PKCE exchange exception:', codeErr);
           }
         }
 
-        // 3. If session wasn't retrieved via exchangeCode, verify via getSession() (e.g. auto-detected by client)
-        if (!authenticatedUser) {
-          const { data: sessionData, error: sessionErr } = await supabase.auth.getSession();
-          if (!sessionErr && sessionData?.session?.user) {
-            authenticatedUser = sessionData.session.user;
+        // Strategy C: If code exchange didn't yield user, re-check session (detectSessionInUrl may have just finished)
+        if (!authUser) {
+          const { data: postExchangeSession } = await supabase.auth.getSession();
+          if (postExchangeSession?.session?.user) {
+            authUser = postExchangeSession.session.user;
           }
         }
 
-        // 4. Fallback verification via getUser()
-        if (!authenticatedUser) {
-          const { data: userData, error: userErr } = await supabase.auth.getUser();
-          if (!userErr && userData?.user) {
-            authenticatedUser = userData.user;
+        // Strategy D: Verify with getUser() as fallback
+        if (!authUser) {
+          const { data: userData } = await supabase.auth.getUser();
+          if (userData?.user) {
+            authUser = userData.user;
           }
         }
 
-        if (!authenticatedUser) {
-          if (!isCancelled) {
-            setStatus('error');
-            setErrorMessage('Unable to verify Google authentication session. Please try signing in again.');
-          }
+        if (authUser && isSubscribed) {
+          completeSuccess(authUser);
           return;
         }
 
-        // 5. Ensure profile exists in public.profiles table (creates it if new user)
-        await ensureUserProfile(authenticatedUser);
-
-        if (!isCancelled) {
-          setStatus('success');
-          showToast('Google authentication verified successfully!');
-
-          // 6. If opened inside a popup from the AI Studio preview iframe, notify opener and close
-          if (window.opener && window.opener !== window) {
-            try {
-              window.opener.postMessage({ type: 'NARIVO_OAUTH_SUCCESS', userId: authenticatedUser.id }, '*');
-              setTimeout(() => {
-                window.close();
-              }, 600);
-              return;
-            } catch (postErr) {
-              console.warn('Failed to postMessage to opener:', postErr);
-            }
+        // Strategy E: Listen for incoming SIGNED_IN event from Supabase internal state machine
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+          if (!isSubscribed) return;
+          if ((event === 'SIGNED_IN' || event === 'USER_UPDATED') && session?.user) {
+            subscription.unsubscribe();
+            completeSuccess(session.user);
           }
-
-          // 7. Otherwise, redirect directly to dashboard
-          setTimeout(() => {
-            if (!isCancelled) {
-              setCurrentScreen('dashboard');
-              if (typeof window !== 'undefined') {
-                window.history.replaceState(null, '', '/dashboard');
-              }
-            }
-          }, 800);
-        }
+        });
       } catch (err: any) {
         console.error('Unexpected error in auth callback:', err);
-        if (!isCancelled) {
+        if (timeoutRef.current) clearTimeout(timeoutRef.current);
+        if (isSubscribed) {
           setStatus('error');
           setErrorMessage(err?.message || 'An unexpected error occurred during Google authentication.');
         }
       }
     };
 
-    processAuthCallback();
+    processAuth();
 
     return () => {
-      isCancelled = true;
+      isSubscribed = false;
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
     };
-  }, [ensureUserProfile, setCurrentScreen, showToast]);
+  }, [completeSuccess, isAuthenticated, setCurrentScreen]);
+
+  const handleManualCheck = async () => {
+    setIsCheckingManual(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        completeSuccess(session.user);
+        return;
+      }
+      showToast('No active session found. Please sign in again.');
+      setCurrentScreen('login');
+    } catch {
+      showToast('Unable to verify session.');
+      setCurrentScreen('login');
+    } finally {
+      setIsCheckingManual(false);
+    }
+  };
 
   return (
     <div className="relative min-h-screen flex flex-col items-center justify-center px-4 sm:px-6 py-8 sm:py-12 bg-[radial-gradient(ellipse_130%_90%_at_50%_-15%,#065f46_0%,#044e39_25%,#033a2b_50%,#022c22_75%,#011f18_100%)] selection:bg-emerald-400 selection:text-slate-950">
@@ -186,7 +273,7 @@ export const AuthCallbackPage: React.FC = () => {
                 Verifying Google Account
               </h1>
               <p className="text-xs text-slate-200 leading-relaxed max-w-xs mx-auto">
-                Establishing your authenticated session and synchronizing your member profile...
+                Establishing your authenticated session and preparing your member dashboard...
               </p>
             </div>
           </div>
@@ -226,14 +313,23 @@ export const AuthCallbackPage: React.FC = () => {
               </div>
             </div>
 
-            <div className="pt-2">
+            <div className="space-y-2.5 pt-1">
+              <button
+                type="button"
+                onClick={handleManualCheck}
+                disabled={isCheckingManual}
+                className="w-full h-11 rounded-2xl bg-gradient-to-r from-emerald-400 via-emerald-500 to-teal-400 hover:from-emerald-300 hover:to-teal-300 text-slate-950 font-extrabold text-xs shadow-[0_10px_24px_rgba(16,185,129,0.35)] active:scale-[0.99] transition-all cursor-pointer flex items-center justify-center gap-2"
+              >
+                <span>{isCheckingManual ? 'Checking Session...' : 'Proceed to Dashboard'}</span>
+                <ArrowRight className="w-4 h-4 text-slate-950" />
+              </button>
+
               <button
                 type="button"
                 onClick={() => setCurrentScreen('login')}
-                className="w-full h-12 rounded-2xl bg-gradient-to-r from-emerald-400 via-emerald-500 to-teal-400 hover:from-emerald-300 hover:to-teal-300 text-slate-950 font-extrabold text-sm shadow-[0_10px_24px_rgba(16,185,129,0.35)] active:scale-[0.99] transition-all cursor-pointer flex items-center justify-center gap-2"
+                className="w-full h-11 rounded-2xl bg-white/[0.08] hover:bg-white/[0.12] border border-white/10 text-white font-semibold text-xs transition-colors cursor-pointer"
               >
-                <span>Return to Sign In</span>
-                <ArrowRight className="w-4 h-4 text-slate-950" />
+                Return to Sign In
               </button>
             </div>
           </div>

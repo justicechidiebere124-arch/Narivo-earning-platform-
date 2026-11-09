@@ -217,6 +217,8 @@ const mapSupabaseDataToProfile = (
   };
 };
 
+export const PROTECTED_SCREENS: ScreenType[] = ['dashboard', 'tasks', 'wallet', 'referrals', 'profile', 'membership'];
+
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentScreen, setCurrentScreenState] = useState<ScreenType>(() => {
     if (typeof window !== 'undefined') {
@@ -276,11 +278,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }, 4000);
   }, []);
 
-  // Protected member-only routes
-  const protectedScreens: ScreenType[] = ['dashboard', 'wallet', 'referrals', 'profile', 'membership'];
+  // Stable auth ref for callbacks
+  const authRef = React.useRef(isAuthenticated);
+  useEffect(() => {
+    authRef.current = isAuthenticated;
+  }, [isAuthenticated]);
 
   const setCurrentScreen = useCallback((screen: ScreenType) => {
-    if (protectedScreens.includes(screen) && !isAuthenticated) {
+    if (PROTECTED_SCREENS.includes(screen) && !authRef.current) {
       showToast('Authentication required. Please sign in to access your member account.');
       setCurrentScreenState('login');
       if (typeof window !== 'undefined') {
@@ -301,7 +306,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
-  }, [isAuthenticated, protectedScreens, showToast]);
+  }, [showToast]);
 
   // Synchronize browser back/forward buttons (popstate)
   useEffect(() => {
@@ -313,90 +318,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
-  // Public data fetcher (campaigns & membership plans accessible publicly)
-  const fetchPublicData = useCallback(async () => {
+  // Public plans fetcher (membership plans are public; sponsored_tasks is restricted to authenticated members)
+  const fetchPublicPlans = useCallback(async () => {
     if (!isSupabaseConfigured) return;
-    setTasksLoading(true);
     try {
-      // 1. Fetch public.membership_plans
-      const { data: mpData } = await supabase
+      const { data: mpData, error: mpErr } = await supabase
         .from('membership_plans')
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (mpData) {
+      if (mpErr) {
+        console.warn('Notice reading public membership plans:', mpErr.message);
+      } else if (mpData) {
         setMembershipPlans(mpData as DatabaseMembershipPlan[]);
       }
-
-      // 2. Fetch public.sponsored_tasks with active campaigns
-      const { data: stData, error: stErr } = await supabase
-        .from('sponsored_tasks')
-        .select('*, sponsored_campaigns(*)')
-        .eq('status', 'active')
-        .order('created_at', { ascending: false });
-
-      if (stErr) {
-        console.warn('Error reading public.sponsored_tasks:', stErr.message);
-        setTasksError(stErr.message);
-        setTasks([]);
-      } else if (stData && stData.length > 0) {
-        const rawTasks = stData as DatabaseSponsoredTask[];
-        const now = Date.now();
-
-        // Display only genuinely active campaigns and tasks
-        const activeTasks = rawTasks.filter((t) => {
-          if (t.status !== 'active') return false;
-          if (t.sponsored_campaigns) {
-            const camp = t.sponsored_campaigns;
-            if (camp.status && camp.status !== 'active') return false;
-            if (camp.starts_at && new Date(camp.starts_at).getTime() > now) return false;
-            if (camp.ends_at && new Date(camp.ends_at).getTime() < now) return false;
-          }
-          return true;
-        });
-
-        const mappedTasks: SponsoredTask[] = activeTasks.map((t) => {
-          let inst: string[] = [];
-          if (Array.isArray(t.instructions)) {
-            inst = t.instructions;
-          } else if (typeof t.instructions === 'string') {
-            inst = t.instructions.split('\n').filter(Boolean);
-          } else {
-            inst = ['Follow the verified campaign instructions provided.'];
-          }
-
-          return {
-            id: t.id,
-            title: t.title,
-            category: 'Sponsored Campaign',
-            sponsorName: t.sponsored_campaigns?.title || 'Verified Advertiser',
-            rewardNaira: (t.reward_kobo || 0) / 100,
-            totalSlots: 100,
-            remainingSlots: 50,
-            estimatedMinutes: 5,
-            instructions: inst,
-            proofRequirements: {
-              type: 'link',
-              description: 'Submit proof URL or verification screenshot as requested.',
-            },
-            verificationWindowHours: 24,
-            status: 'active',
-            createdAt: t.created_at,
-            campaignType: 'verified_sponsor',
-          };
-        });
-        setTasks(mappedTasks);
-        setTasksError(null);
-      } else {
-        setTasks([]);
-        setTasksError(null);
-      }
     } catch (err: any) {
-      console.warn('Failed to fetch public tasks & plans:', err);
-      setTasksError(err?.message || 'Database query error');
-      setTasks([]);
-    } finally {
-      setTasksLoading(false);
+      console.warn('Failed to fetch public membership plans:', err);
     }
   }, []);
 
@@ -733,16 +670,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, []);
 
   const refreshAllData = useCallback(async () => {
-    await fetchPublicData();
+    await fetchPublicPlans();
     if (!user) return;
     await fetchUserData(user.id);
-  }, [user, fetchPublicData, fetchUserData]);
+  }, [user, fetchPublicPlans, fetchUserData]);
 
   const refreshMembership = useCallback(async () => {
-    await fetchPublicData();
+    await fetchPublicPlans();
     if (!user) return;
     await fetchUserData(user.id);
-  }, [user, fetchPublicData, fetchUserData]);
+  }, [user, fetchPublicPlans, fetchUserData]);
 
   // =========================================================================
   // USER PROFILE SYNCHRONIZATION (IDEMPOTENT & STRICT)
@@ -833,42 +770,74 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
 
       try {
-        // Fetch public marketplace and plans for all users
-        await fetchPublicData();
-
+        // Fast-path: Check session immediately without blocking on network queries
         const { data: { session }, error } = await supabase.auth.getSession();
         if (error) {
-          console.warn('Supabase auth getSession error:', error.message);
+          console.warn('Supabase auth getSession notice:', error.message);
         }
 
         if (session?.user && isMounted) {
           setIsAuthenticated(true);
-          await ensureUserProfile(session.user);
-          await fetchUserData(session.user.id, session.user);
+          setUser((prev) => (prev && prev.id === session.user.id ? prev : mapSupabaseDataToProfile(session.user)));
+          setAuthLoading(false);
+
+          // Asynchronous background hydration (non-blocking)
+          setTimeout(() => {
+            if (!isMounted) return;
+            ensureUserProfile(session.user)
+              .catch((err) => console.warn('Background profile sync note:', err))
+              .finally(() => {
+                if (isMounted) {
+                  fetchUserData(session.user.id, session.user).catch((err) =>
+                    console.warn('Background user data fetch error:', err)
+                  );
+                }
+              });
+          }, 0);
+        } else if (isMounted) {
+          setAuthLoading(false);
         }
+
+        // Fetch public plans separately in the background
+        fetchPublicPlans().catch((err) => console.warn('Public plans fetch error:', err));
       } catch (err) {
         console.warn('Failed to restore Supabase session:', err);
-      } finally {
         if (isMounted) setAuthLoading(false);
       }
     };
 
     initializeAuth();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+    // Supabase auth state listener: completely non-blocking, safe asynchronous execution outside auth lock
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (!isMounted) return;
 
       if (event === 'SIGNED_IN' || event === 'USER_UPDATED' || event === 'TOKEN_REFRESHED') {
         if (session?.user) {
           setIsAuthenticated(true);
-          await ensureUserProfile(session.user);
-          await fetchUserData(session.user.id, session.user);
+          setUser((prev) => (prev && prev.id === session.user.id ? prev : mapSupabaseDataToProfile(session.user)));
+          setAuthLoading(false);
+
+          // Safe asynchronous execution outside the auth lock
+          setTimeout(() => {
+            if (!isMounted) return;
+            ensureUserProfile(session.user)
+              .catch((err) => console.warn('Background profile sync note:', err))
+              .finally(() => {
+                if (isMounted) {
+                  fetchUserData(session.user.id, session.user).catch((err) =>
+                    console.warn('Background user data fetch error:', err)
+                  );
+                }
+              });
+          }, 0);
         }
       } else if (event === 'SIGNED_OUT') {
         setUser(null);
         setDbProfile(null);
         setActiveMembership(null);
         setIsAuthenticated(false);
+        setAuthLoading(false);
         setAvailableBalance(0);
         setPendingRewards(0);
         setReservedFunds(0);
@@ -885,11 +854,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       isMounted = false;
       subscription?.unsubscribe();
     };
-  }, [fetchPublicData, fetchUserData, ensureUserProfile]);
+  }, [fetchPublicPlans, fetchUserData, ensureUserProfile]);
 
   // Listen for OAuth popup completion (supports AI Studio iframe environment)
   useEffect(() => {
-    const handleOAuthPopupMessage = async (event: MessageEvent) => {
+    const handleOAuthPopupMessage = (event: MessageEvent) => {
       if (typeof window !== 'undefined') {
         const origin = event.origin;
         if (
@@ -902,24 +871,33 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
 
       if (event.data?.type === 'NARIVO_OAUTH_SUCCESS') {
-        try {
-          const { data: { session } } = await supabase.auth.getSession();
+        supabase.auth.getSession().then(({ data: { session } }) => {
           if (session?.user) {
             setIsAuthenticated(true);
-            await ensureUserProfile(session.user);
-            await fetchUserData(session.user.id, session.user);
+            setUser((prev) => (prev && prev.id === session.user.id ? prev : mapSupabaseDataToProfile(session.user)));
+            setAuthLoading(false);
             showToast('Signed in with Google successfully!');
             setCurrentScreenState('dashboard');
             if (typeof window !== 'undefined') {
               const path = SCREEN_ROUTES['dashboard'];
               if (window.location.pathname !== path) {
-                window.history.pushState(null, '', path);
+                window.history.replaceState(null, '', path);
               }
             }
+
+            setTimeout(() => {
+              ensureUserProfile(session.user)
+                .catch((e) => console.warn('Popup profile sync note:', e))
+                .finally(() => {
+                  fetchUserData(session.user.id, session.user).catch((e) =>
+                    console.warn('Popup user data fetch error:', e)
+                  );
+                });
+            }, 0);
           }
-        } catch (e) {
+        }).catch((e) => {
           console.warn('Error handling OAuth popup message:', e);
-        }
+        });
       }
     };
 
@@ -929,19 +907,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Route protection check: require authentication for protected pages
   useEffect(() => {
-    if (!authLoading && !isAuthenticated && protectedScreens.includes(currentScreen)) {
+    if (!authLoading && !isAuthenticated && PROTECTED_SCREENS.includes(currentScreen)) {
       setCurrentScreenState('login');
     }
-  }, [authLoading, isAuthenticated, currentScreen, protectedScreens]);
+  }, [authLoading, isAuthenticated, currentScreen]);
 
-  // Automatically redirect authenticated users visiting /login or /register to /dashboard
+  // Automatically redirect authenticated users visiting /login, /register, or /auth/callback to /dashboard
   useEffect(() => {
-    if (!authLoading && isAuthenticated && (currentScreen === 'login' || currentScreen === 'register')) {
+    if (!authLoading && isAuthenticated && (currentScreen === 'login' || currentScreen === 'register' || currentScreen === 'auth-callback')) {
       setCurrentScreenState('dashboard');
       if (typeof window !== 'undefined') {
         const path = SCREEN_ROUTES['dashboard'];
         if (window.location.pathname !== path) {
-          window.history.pushState(null, '', path);
+          window.history.replaceState(null, '', path);
         }
       }
     }
