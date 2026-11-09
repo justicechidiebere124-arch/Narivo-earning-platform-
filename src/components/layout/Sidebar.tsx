@@ -24,7 +24,8 @@ export const Sidebar: React.FC = () => {
     user,
     availableBalance, 
     isMembershipActive,
-    logout 
+    logout,
+    isAdmin 
   } = useApp();
 
   const navItems: { id: ScreenType; label: string; icon: React.FC<{ className?: string }> }[] = [
@@ -105,6 +106,31 @@ export const Sidebar: React.FC = () => {
             </a>
           );
         })}
+
+        {/* Admin Console Entry (Strictly Authorized Administrator Only) */}
+        {isAdmin && (
+          <div className="pt-3 mt-3 border-t border-emerald-400/15">
+            <div className="px-3 pb-2 text-[10px] font-bold text-amber-300/90 uppercase tracking-widest flex items-center gap-1.5">
+              <ShieldCheck className="w-3 h-3 text-amber-400" />
+              <span>Administration</span>
+            </div>
+            <a
+              href="/admin"
+              onClick={(e) => handleLinkClick(e, 'admin')}
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                currentScreen === 'admin'
+                  ? 'bg-amber-500/20 text-amber-300 border border-amber-400/40 shadow-sm'
+                  : 'text-amber-300/90 hover:text-amber-200 hover:bg-amber-500/10 border border-amber-400/20'
+              }`}
+            >
+              <div className="flex items-center gap-2.5">
+                <ShieldCheck className="w-4 h-4 text-amber-400" />
+                <span>Admin Console</span>
+              </div>
+              <div className="w-1.5 h-1.5 rounded-full bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.8)]" />
+            </a>
+          </div>
+        )}
       </div>
 
       {/* Bottom Balance Card & User Profile */}

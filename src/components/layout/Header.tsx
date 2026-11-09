@@ -30,7 +30,8 @@ export const Header: React.FC = () => {
     availableBalance, 
     isMembershipActive,
     submissions,
-    logout 
+    logout,
+    isAdmin 
   } = useApp();
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -195,6 +196,19 @@ export const Header: React.FC = () => {
             </>
           ) : (
             <div className="flex items-center gap-2.5">
+              {/* Admin Console Quick Button (Authorized Administrator Only) */}
+              {isAdmin && (
+                <button
+                  type="button"
+                  onClick={() => navigateTo('admin')}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-400/40 text-amber-300 text-xs font-bold transition-all cursor-pointer shadow-sm"
+                  title="Open Admin Console"
+                >
+                  <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
+                  <span className="hidden sm:inline">Admin Console</span>
+                </button>
+              )}
+
               {/* Task Wallet Quick Balance Button */}
               <button
                 type="button"
@@ -279,6 +293,17 @@ export const Header: React.FC = () => {
                       <p className="text-xs font-bold text-white truncate">{user?.fullName || 'Member'}</p>
                       <p className="text-[11px] text-emerald-300/80 truncate font-mono">{user?.email || ''}</p>
                     </div>
+
+                    {isAdmin && (
+                      <button
+                        type="button"
+                        onClick={() => navigateTo('admin')}
+                        className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold text-amber-300 hover:bg-amber-500/15 transition-colors cursor-pointer text-left"
+                      >
+                        <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
+                        <span>Admin Console</span>
+                      </button>
+                    )}
 
                     <button
                       type="button"
@@ -425,6 +450,16 @@ export const Header: React.FC = () => {
               >
                 Profile & Settings
               </button>
+              {isAdmin && (
+                <button
+                  type="button"
+                  onClick={() => navigateTo('admin')}
+                  className="w-full text-left px-3 py-2.5 rounded-xl text-xs font-bold text-amber-300 hover:bg-amber-500/15 min-h-[44px] flex items-center gap-2"
+                >
+                  <ShieldCheck className="w-4 h-4 text-amber-400" />
+                  <span>Admin Console</span>
+                </button>
+              )}
               <div className="pt-2 border-t border-emerald-400/20">
                 <button
                   type="button"

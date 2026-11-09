@@ -44,6 +44,7 @@ export type ScreenType =
   | 'referrals' 
   | 'profile'
   | 'membership'
+  | 'admin'
   | 'not-found';
 
 export const SCREEN_ROUTES: Record<ScreenType, string> = {
@@ -64,6 +65,7 @@ export const SCREEN_ROUTES: Record<ScreenType, string> = {
   referrals: '/referrals',
   profile: '/profile',
   membership: '/membership',
+  admin: '/admin',
   'not-found': '/404',
 };
 
@@ -71,6 +73,9 @@ export const getScreenFromPathname = (pathname: string): ScreenType => {
   const normalized = pathname.replace(/\/$/, '') || '/';
   if (normalized === '/callback' || normalized === '/auth/v1/callback') {
     return 'auth-callback';
+  }
+  if (normalized === '/admin') {
+    return 'admin';
   }
   for (const [screen, path] of Object.entries(SCREEN_ROUTES)) {
     if (path === normalized && screen !== 'not-found') {
@@ -90,8 +95,10 @@ interface AppContextType {
   currentScreen: ScreenType;
   setCurrentScreen: (screen: ScreenType) => void;
   user: UserProfile | null;
+  supabaseUser: SupabaseAuthUser | null;
   isAuthenticated: boolean;
   authLoading: boolean;
+  isAdmin: boolean;
   isEmailVerified: boolean;
   isSupabaseConfigured: boolean;
   
@@ -220,7 +227,7 @@ const mapSupabaseDataToProfile = (
   };
 };
 
-export const PROTECTED_SCREENS: ScreenType[] = ['dashboard', 'tasks', 'wallet', 'referrals', 'profile', 'membership'];
+export const PROTECTED_SCREENS: ScreenType[] = ['dashboard', 'tasks', 'wallet', 'referrals', 'profile', 'membership', 'admin'];
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentScreen, setCurrentScreenState] = useState<ScreenType>(() => {
@@ -240,7 +247,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   });
   const [authLoading, setAuthLoading] = useState<boolean>(true);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [supabaseUser, setSupabaseUser] = useState<SupabaseAuthUser | null>(null);
   const [user, setUser] = useState<UserProfile | null>(null);
+
+  // Authorization source: strictly verified from cryptographically signed Supabase JWT app_metadata.role
+  const isAdmin = Boolean(
+    isAuthenticated &&
+    supabaseUser &&
+    supabaseUser.app_metadata?.role === 'admin' &&
+    supabaseUser.email?.toLowerCase() === 'justicechidiebere124@gmail.com'
+  );
 
   // Database-backed Profile & Membership
   const [dbProfile, setDbProfile] = useState<DatabaseProfile | null>(null);
@@ -790,6 +806,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
         if (session?.user && isMounted) {
           setIsAuthenticated(true);
+          setSupabaseUser(session.user);
           setUser((prev) => (prev && prev.id === session.user.id ? prev : mapSupabaseDataToProfile(session.user)));
           setAuthLoading(false);
 
@@ -807,6 +824,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               });
           }, 0);
         } else if (isMounted) {
+          setSupabaseUser(null);
           setAuthLoading(false);
         }
 
@@ -814,7 +832,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         fetchPublicPlans().catch((err) => console.warn('Public plans fetch error:', err));
       } catch (err) {
         console.warn('Failed to restore Supabase session:', err);
-        if (isMounted) setAuthLoading(false);
+        if (isMounted) {
+          setSupabaseUser(null);
+          setAuthLoading(false);
+        }
       }
     };
 
@@ -827,6 +848,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (event === 'SIGNED_IN' || event === 'USER_UPDATED' || event === 'TOKEN_REFRESHED') {
         if (session?.user) {
           setIsAuthenticated(true);
+          setSupabaseUser(session.user);
           setUser((prev) => (prev && prev.id === session.user.id ? prev : mapSupabaseDataToProfile(session.user)));
           setAuthLoading(false);
 
@@ -846,6 +868,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
       } else if (event === 'SIGNED_OUT') {
         setUser(null);
+        setSupabaseUser(null);
         setDbProfile(null);
         setActiveMembership(null);
         setIsAuthenticated(false);
@@ -886,6 +909,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         supabase.auth.getSession().then(({ data: { session } }) => {
           if (session?.user) {
             setIsAuthenticated(true);
+            setSupabaseUser(session.user);
             setUser((prev) => (prev && prev.id === session.user.id ? prev : mapSupabaseDataToProfile(session.user)));
             setAuthLoading(false);
             showToast('Signed in with Google successfully!');
@@ -961,6 +985,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       if (data.user) {
         setIsAuthenticated(true);
+        setSupabaseUser(data.user);
         await fetchUserData(data.user.id, data.user);
         showToast('Signed in successfully.');
         setCurrentScreenState('dashboard');
@@ -1011,6 +1036,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
 
       if (authData.user) {
+        setSupabaseUser(authData.user);
         if (authData.session) {
           setIsAuthenticated(true);
           await fetchUserData(authData.user.id, authData.user);
@@ -1306,8 +1332,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         currentScreen,
         setCurrentScreen,
         user,
+        supabaseUser,
         isAuthenticated,
         authLoading,
+        isAdmin,
         isEmailVerified,
         isSupabaseConfigured,
         dbProfile,

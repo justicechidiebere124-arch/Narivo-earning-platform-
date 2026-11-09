@@ -28,6 +28,7 @@ import { WalletPage } from './components/pages/WalletPage';
 import { ReferralPage } from './components/pages/ReferralPage';
 import { ProfilePage } from './components/pages/ProfilePage';
 import { MembershipPage } from './components/pages/MembershipPage';
+import { AdminPage } from './components/pages/AdminPage';
 import { NotFoundPage } from './components/pages/NotFoundPage';
 
 const MainContent: React.FC = () => {
@@ -35,6 +36,7 @@ const MainContent: React.FC = () => {
 
   const isPortalScreen = isAuthenticated && ['dashboard', 'tasks', 'wallet', 'referrals', 'profile', 'membership'].includes(currentScreen);
   const isLanding = currentScreen === 'landing';
+  const isAdminScreen = currentScreen === 'admin';
   const isAuthScreen = [
     'login', 
     'register', 
@@ -79,6 +81,8 @@ const MainContent: React.FC = () => {
         return <ProfilePage />;
       case 'membership':
         return <MembershipPage />;
+      case 'admin':
+        return <AdminPage />;
       case 'not-found':
         return <NotFoundPage />;
       default:
@@ -86,8 +90,8 @@ const MainContent: React.FC = () => {
     }
   };
 
-  // Minimal, uncompromised Emerald Glass layout for landing and auth screens (no top nav, no bottom nav, no footer marketing clutter)
-  if (isLanding || isAuthScreen) {
+  // Dedicated layout for landing, auth, and admin console
+  if (isLanding || isAuthScreen || isAdminScreen) {
     return (
       <div className="min-h-screen flex flex-col bg-[radial-gradient(ellipse_130%_90%_at_50%_-15%,#065f46_0%,#044e39_25%,#033a2b_50%,#022c22_75%,#011f18_100%)] text-slate-100 font-sans selection:bg-emerald-400 selection:text-slate-950 relative overflow-x-hidden">
         <main className="flex-1 flex flex-col">
