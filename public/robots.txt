@@ -6,9 +6,16 @@ Allow: /contact
 Allow: /terms
 Allow: /privacy
 Disallow: /dashboard
+Disallow: /tasks
 Disallow: /wallet
 Disallow: /referrals
 Disallow: /profile
 Disallow: /membership
+Disallow: /admin
+Disallow: /auth/callback
+Disallow: /login
+Disallow: /register
+Disallow: /forgot-password
+Disallow: /reset-password
 
 Sitemap: https://narivo.site/sitemap.xml
